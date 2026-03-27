@@ -37,7 +37,8 @@ graph TD
 
 | Таблица | Ключевые поля | Назначение |
 |---|---|---|
-| `employees` | id, name, role, department_id, is_head | Список сотрудников |
+| `employees` | id, name, id_role, department_id, is_head | Список сотрудников |
+| `role` | id, role_name, role_weight | Список ролей |
 | `departments` | id, name, parent_id | Отделы + иерархия (дерево) |
 | `categories` | id, name, keywords (из ии - в таблице оставляем пустыми), default_department_id | Типы обращений |
 | `tickets` | id, text, category_id, priority, status, created_at, author_id, assigned_to | Обращения |

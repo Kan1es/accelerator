@@ -38,12 +38,11 @@ graph TD
 | Таблица | Ключевые поля | Назначение |
 |---|---|---|
 | `employees` | id, name, role, department_id, is_head | Список сотрудников |
-| `departments` | id, name, parent_id, level | Отделы + иерархия (дерево) |
-| `categories` | id, name, keywords, default_department_id | Типы обращений |
+| `departments` | id, name, parent_id | Отделы + иерархия (дерево) |
+| `categories` | id, name, keywords (из ии - в таблице оставляем пустыми), default_department_id | Типы обращений |
 | `tickets` | id, text, category_id, priority, status, created_at, author_id, assigned_to | Обращения |
 | `ticket_assignments` | ticket_id, employee_id, department_id, assigned_at, accepted_at, escalated | Трекинг назначения |
-| `templates` | id, category_id, description, typical_resolution | Типовые заявки |
-| `escalation_rules` | category_id, level, timeout_minutes | Правила таймаута |
+| `escalation_rules` | category_id, timeout_minutes | Правила таймаута |
 
 ### Иерархия отделов (пример)
 ```

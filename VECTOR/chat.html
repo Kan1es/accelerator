@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ВЕКТОР - Чат с ИИ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-[#0D0D0D] text-white font-sora h-screen flex overflow-hidden">
+
+    <aside id="sidebar" class="hidden lg:flex w-72 border-r border-[#2A2A2A] bg-[#0D0D0D] flex-col transition-all duration-500 z-50">
+        <div class="p-8 flex items-center gap-4">
+            <img src="ВЕКТОР.svg" class="w-10 h-10">
+            <span class="text-3xl font-bold tracking-tighter uppercase">ВЕКТОР</span>
+        </div>
+        
+        <div class="px-8 mt-10 space-y-1 flex-1">
+            <div class="flex items-center gap-4 p-4 bg-[#151515] rounded-2xl border border-[#2A2A2A]">
+                <div class="w-10 h-10 bg-[#FF7A00] rounded-full flex items-center justify-center font-bold text-black text-xs">👤</div>
+                <div class="truncate">
+                    <p class="text-sm font-bold">Имя пользователя</p>
+                    <p class="text-[10px] text-[#6B6B6B] uppercase tracking-widest">Пользователь</p>
+                </div>
+            </div>
+
+            <nav class="space-y-0">
+                <a href="support.html" class="flex items-center gap-4 text-[#B3B3B3] hover:text-[#FF7A00] transition-colors p-2">
+                    <span class="text-xl">🎧</span> <span class="text-sm">Чат с оператором</span>
+                </a>
+                <div class="flex items-center gap-4 text-[#B3B3B3] opacity-50 p-2 cursor-not-allowed">
+                    <span class="text-xl">📁</span> <span class="text-sm">Папка запросов</span>
+                </div>
+            </nav>
+        </div>
+
+        <button onclick="location.href='index.html'" class="p-8 text-left text-sm text-[#6B6B6B] hover:text-white transition-colors">
+            ⇠ На главную
+        </button>
+    </aside>
+
+    <main class="flex-1 flex flex-col relative min-w-0">
+        
+        <header class="lg:hidden p-4 border-b border-[#2A2A2A] flex justify-between items-center bg-[#0D0D0D]/80 backdrop-blur-md">
+            <div class="flex items-center gap-2">
+                <img src="ВЕКТОР.svg" class="w-8 h-8">
+                <span class="font-bold text-sm uppercase">ВЕКТОР AI</span>
+            </div>
+            <button onclick="location.href='index.html'" class="text-xs text-[#FF7A00]">Выход</button>
+        </header>
+
+        <button onclick="location.href='index.html'" class="hidden lg:flex absolute top-10 right-10 text-[#B3B3B3] hover:text-[#FF7A00] transition-all items-center gap-2 text-sm bg-[#151515] px-6 py-3 rounded-2xl border border-[#2A2A2A] z-10">
+            ↩ Вернуться
+        </button>
+
+        <div id="chat-box" class="flex-1 overflow-y-auto p-4 md:p-10 lg:p-20 space-y-6 md:space-y-10">
+            <div class="flex gap-4 md:gap-6 animate-gentle max-w-[95%] md:max-w-[85%]">
+            </div>
+
+        </div>
+
+        <div class="p-4 md:p-6 w-full max-w-5xl mx-auto shrink-0">
+    <div class="relative flex items-center group">
+        
+        <button class="absolute left-4 flex items-center justify-center text-[#6B6B6B] hover:text-[#FF7A00] transition-all">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+        </button>
+        
+        <input type="text" placeholder="Спросите о чем-нибудь..." 
+               class="w-full bg-[#151515] border border-[#2A2A2A] rounded-2xl py-3 md:py-4 px-12 outline-none focus:border-[#FF7A00]/40 transition-all text-sm md:text-base shadow-lg">
+        
+        <button class="absolute right-4 flex items-center justify-center text-[#B3B3B3] hover:text-[#FF7A00] transition-transform hover:scale-110 active:scale-95">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path>
+            </svg>
+        </button>
+
+    </div>
+    <p class="text-[8px] md:text-[10px] text-[#6B6B6B] text-center mt-3 opacity-50 px-4">
+        Будьте внимательны, Вы ведёте диалог с искусственным интеллектом, он может допускать ошибки
+    </p>
+</div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

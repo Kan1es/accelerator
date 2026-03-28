@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ВЕКТОР - Пользователю</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-[#0D0D0D] text-white font-sora min-h-screen flex flex-col overflow-x-hidden">
+    
+    <header class="p-3 md:px-10 flex flex-col md:flex-row justify-between items-center gap-6 z-50 relative">
+        <div class="flex items-center gap-4">
+            <img src="ВЕКТОР.svg" class="w-14 h-14 md:w-14 md:h-14" alt="Logo">
+            <span class="text-2xl md:text-5xl font-semibold tracking-tighter uppercase">ВЕКТОР</span>
+        </div>
+        <nav class="flex flex-wrap justify-center gap-4 md:gap-12 items-center">
+            <a href="index.html" class="nav-item active-tab text-m md:text-xl font-light">Пользователю</a>
+            <a href="roles.html" class="nav-item text-m md:text-xl opacity-100 font-light hover:text-[#FF9A3C] active:text-[#CC6200]">Сотруднику</a>
+            <a href="support.html" class="nav-item text-m md:text-xl opacity-100 font-light hover:text-[#FF9A3C] active:text-[#CC6200]">Поддержка</a>
+        </nav>
+    </header>
+
+    <main class="flex-1 flex flex-col items-center justify-center px-4 -mt-10 md:-mt-20">
+        <div class="text-2xl md:text-5xl font-light mb-8 md:mb-12 text-center h-16">
+            П<span id="typewriter"></span><span class="cursor">|</span>
+        </div>
+
+        <div onclick="location.href='chat.html'" 
+             class="search-wrapper group relative w-full max-w-[700px] h-[90px] md:h-[70px] bg-[#151515] border border-[#2A2A2A] rounded-[20px] md:rounded-[24px] flex items-center px-6 md:px-12 cursor-pointer overflow-hidden transition-all duration-700 hover:h-[100px] md:hover:h-[120px] hover:scale-[1.01] md:hover:scale-[1.02] hover:border-[#FF7A00]">
+            
+            <img src="ВЕКТОР.svg" class="logo-fly-in w-40 md:w-40" alt="Bg Logo">
+            <div class="vector-text-fly hidden md:block uppercase text-[10px] tracking-[0.5em] absolute bottom-6 right-3 opacity-0 group-hover:opacity-30 transition-all">ВЕКТОР</div>
+
+            <div class="relative z-10 w-full flex items-center justify-between bg-[#2A2A2A]/50 rounded-[14px] px-6 h-[40px] transition-all">
+    
+                <div class="grid grid-cols-1 grid-rows-1 items-center flex-1 min-w-0">
+                    
+                    <span class="col-start-1 row-start-1 text-[#B3B3B3] text-sm md:text-lg truncate transition-all duration-500 group-hover:opacity-0 group-hover:-translate-y-4">
+                        Свободные вакансии, резюме...
+                    </span>
+                    
+                    <span class="col-start-1 row-start-1 text-[#FF9A3C] text-sm md:text-xl font-sora opacity-0 translate-y-4 transition-all duration-500 group-hover:opacity-100 group-hover:translate-y-0">
+                        Начните уже сейчас
+                    </span>
+                    
+                </div>
+
+                    <svg class="text-[#6B6B6B] group-hover:text-[#FF7A00] transition-colors shrink-0 ml-4" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                    </svg>
+                </div>
+        </div>
+
+        <div class="mt-10 md:mt-12 w-full max-w-[700px]">
+            <p class="text-[9px] md:text-[10px] text-[#6B6B6B] uppercase tracking-[0.3em] mb-6 text-center">Часто задаваемые вопросы</p>
+            <div class="flex flex-col gap-3 items-center">
+                <div onclick="location.href='chat.html'" class="faq-pill w-full md:w-3/4 text-center">Часы работы предприятия</div>
+                <div onclick="location.href='chat.html'" class="faq-pill w-full md:w-3/4 text-center">Открытые вакансии</div>
+                <div onclick="location.href='chat.html'" class="faq-pill w-full md:w-3/4 text-center">Варианты сотрудничества</div>
+            </div>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

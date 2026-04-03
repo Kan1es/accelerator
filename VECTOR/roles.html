@@ -6,14 +6,15 @@
     <title>ВЕКТОР - Выбор роли</title>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles/styles.css">
 </head>
 <body class="bg-[#0D0D0D] text-white font-sora h-screen flex flex-col overflow-x-hidden">
 
     <header class="p-3 md:px-10 flex flex-col md:flex-row justify-between items-center gap-6 z-50 relative">
         <div class="flex items-center gap-4">
-            <img src="ВЕКТОР.svg" class="w-14 h-14 md:w-14 md:h-14" alt="Logo">
+            <a href="index.html" class="flex items-center gap-6"><img src="images/ВЕКТОР.svg" class="w-14 h-14 md:w-14 md:h-14" alt="Logo">
             <span class="text-2xl md:text-5xl font-semibold tracking-tighter uppercase">ВЕКТОР</span>
+            </a>
         </div>
         <nav class="flex flex-wrap justify-center gap-4 md:gap-12 items-center">
             <a href="roles.html" class="nav-item active-tab text-m md:text-xl opacity-100 font-light hover:text-[#FF9A3C] active:text-[#CC6200]">Сотруднику</a>
@@ -31,10 +32,10 @@
 
         <div class="roles-wrapper flex flex-wrap items-center justify-center gap-6 md:gap-12 w-full max-w-6xl">
             
-            <div id="card-emp" class="role-card">
-                <img src="hammer.png" class="card-icon hammer-anim" alt="">
+            <a id="card-emp" class="role-card" href="employee_dashboard.html">
+                <img src="images/hammer.png" class="card-icon hammer-anim" alt="">
                 <span class="role-title">Я сотрудник</span>
-            </div>
+            </a>
 
             <div class="arrows-container flex flex-col gap-6 md:gap-10">
                 <svg id="arrow-to-mgr" class="arrow-hor" width="60" height="30" viewBox="0 0 60 30" fill="currentColor">
@@ -46,13 +47,13 @@
             </div>
 
             <div id="card-mgr" class="role-card">
-                <img src="tie.png" class="card-icon tie-anim" alt="">
+                <img src="images/tie.png" class="card-icon tie-anim" alt="">
                 <span class="role-title">Я управляющий</span>
             </div>
 
         </div>
     </main>
 
-    <script src="script.js"></script>
+    <script src="scripts/script.js"></script>
 </body>
 </html>

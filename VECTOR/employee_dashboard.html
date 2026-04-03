@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ВЕКТОР</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles/styles_employee.css">
+    <script defer src="https://unpkg.com/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+
+<body class="bg-[#0D0D0D] text-white font-sora min-h-screen flex flex-col overflow-x-hidden">
+    <header class="p-3 md:px-10 flex flex-col md:flex-row justify-between items-center gap-6 z-50 relative">
+        <div class="flex items-center gap-4">
+            <a href="index.html" class="flex items-center gap-6"><img src="images/ВЕКТОР.svg"
+                    class="w-14 h-14 md:w-14 md:h-14" alt="Logo">
+                <span class="text-2xl md:text-5xl font-semibold tracking-tighter uppercase">ВЕКТОР</span>
+            </a>
+        </div>
+        <nav class="flex flex-wrap justify-center gap-4 md:gap-12 items-center">
+            <a href="employee_dashboard.html" class="nav-item text-m md:text-xl font-light text-[#CC6200]">Главная</a>
+            <a href="#"
+                class="nav-item text-m md:text-xl opacity-100 font-light hover:text-[#FF9A3C] active:text-[#CC6200]">Задачи</a>
+            <a href="#"
+                class="nav-item text-m md:text-xl opacity-100 font-light hover:text-[#FF9A3C] active:text-[#CC6200]">Поддержка</a>
+        </nav>
+    </header>
+
+    <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 px-4 md:px-10 pb-6">
+
+        <div class="lg:col-span-3 flex flex-col gap-4 min-h-0 order-2 lg:order-1">
+
+            <div class="card flex-[4] flex flex-col overflow-hidden min-h-[200px]">
+                <h2 class="p-3 text-center shrink-0 text-m font-normal border-b border-white/5">
+                    Список задач</h2>
+                <div class="flex-1 overflow-y-auto custom-scrollbar">
+                    <div class="task-item">
+                        <span class="dot">•</span>
+                        <div>
+                            <p class="text-sm">Замена оборудования</p>
+                            <span class="muted">Отдел I, цех 2</span>
+                        </div>
+                    </div>
+                    <div class="task-item">
+                        <span class="dot">•</span>
+                        <div>
+                            <p class="text-sm">Замена оборудования</p>
+                            <span class="muted">Отдел I, цех 2</span>
+                        </div>
+                    </div>
+                    <div class="task-item">
+                        <span class="dot">•</span>
+                        <div>
+                            <p class="text-sm">Замена оборудования</p>
+                            <span class="muted">Отдел I, цех 2</span>
+                        </div>
+                    </div>
+                    <div class="task-item">
+                        <span class="dot">•</span>
+                        <div>
+                            <p class="text-sm">Замена оборудования</p>
+                            <span class="muted">Отдел I, цех 2</span>
+                        </div>
+                    </div>
+                    <div class="task-item">
+                        <span class="dot">•</span>
+                        <div>
+                            <p class="text-sm">Замена оборудования</p>
+                            <span class="muted">Отдел I, цех 2</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div x-data="{ open: true }" :class="open ? 'flex-[6]' : 'flex-none'"
+                class="card flex flex-col overflow-hidden transition-[flex] duration-500 ease-in-out bg-[#151515]">
+
+                <div @click="open = !open"
+                    class="p-3 flex justify-between items-center border-b border-[#2A2A2A] bg-[#151515] shrink-0 cursor-pointer">
+                    <div class="flex items-center gap-2">
+                        <img src="images/ВЕКТОР.svg" class="w-6">
+                        <div>
+                            <p class="text-xs uppercase font-[600]">ВЕКТОР</p>
+                            <span class="online flex items-center gap-1 text-[10px]">
+                                <span class="w-1.5 h-1.5 bg-[#00FF66] rounded-full"></span> В сети
+                            </span>
+                        </div>
+                    </div>
+                    <button class="text-[#6B6B6B] transition-transform duration-500" :class="!open && 'rotate-180'">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="3">
+                            <path d="M6 9l6 6 6-6" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div x-show="open" x-collapse.duration.500ms class="flex flex-col flex-1 overflow-hidden">
+                    <div class="p-3 flex flex-col gap-2">
+                        <button @click="setChatQuery('Соедини меня с управляющим')" class="chat-pill text-sm">Соедини
+                            меня с управляющим</button>
+                        <button @click="setChatQuery('Какой срок выполнения задачи №153?')"
+                            class="chat-pill text-sm">Какой срок выполнения задачи №153?</button>
+                    </div>
+                    <div class="mt-auto p-3 border-t border-[#2A2A2A] bg-[#111111]">
+                        <div class="flex items-center gap-2 bg-black/40 p-2 px-3 rounded-xl border border-white/5">
+                            <input id="chat-input" class="bg-transparent outline-none text-sm flex-1 text-white"
+                                type="text" placeholder="Задайте вопрос...">
+                            <button class="text-[#FF7A00]">➤</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <main
+            class="lg:col-span-7 bg-[#151515] border border-white/5 rounded-[5px] p-6 md:p-12 flex flex-col order-1 lg:order-2">
+            <div class="text-center mb-8 md:mb-12">
+                <h1 class="text-2xl md:text-4xl font-[500]">Добрый день, Имя!</h1>
+                <p class="text-[#6B6B6B] text-base md:text-lg">сегодня у тебя <span
+                        class="text-white border-b-2 border-[#FF7A00] px-1">8</span> задач</p>
+            </div>
+
+            <div class="mb-10 md:mb-16">
+                <div class="w-full bg-[#1A1A1A] h-[6px] rounded-full  ">
+                    <div class="h-full bg-[#FF7A00] shadow-[0_0_10px_rgba(255,122,0,0.5)] rounded-full"
+                        style="width: 62.5%"></div>
+                </div>
+                <div class="flex justify-between text-sm text-[#6B6B6B] mt-2 font-[400]">
+                    <span>0</span>
+                    <span>Общая шкала выполненных задач</span>
+                    <span>100</span>
+                </div>
+            </div>
+
+            <div class="space-y-4 custom-scrollbar overflow-hidden"> <!--СДЕЛАТЬ ЧТОБЫ ПРИ ОВЕРФЛОУ БЫЛ СКРОЛЛБАР-->
+                <h3 class="text-xl font-[400] secondary">Требует внимания:</h3>
+                <div
+                    class="bg-[#111111] border border-white/5 p-4 md:p-8 rounded-[5px] flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div
+                        class="flex flex-col md:flex-row items-center text-center md:text-left gap-4 md:gap-8">
+                        <div
+                            class="bg-[#FF7A00] w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shrink-0">
+                            svg
+                        </div>
+                        <div>
+                            <h4 class="font-[500] text-xl md:text-2xl">Задача №153</h4>
+                            <p class="text-xs md:text-sm muted">Скоро просрочится, проверьте сроки</p>
+                        </div>
+                    </div>
+                    <button
+                        class="w-full md:w-auto px-4 py-2 bg-[#1F1F1F] rounded-[5px] text-lg hover:bg-[#252525] border border-white/5 transition-colors">Открыть</button>
+                </div>
+                <div
+                    class="bg-[#111111] border border-white/5 p-4 md:p-8 rounded-[5px] flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div class="flex flex-col md:flex-row items-center text-center md:text-left gap-4 md:gap-8">
+                        <div
+                            class="bg-[#FF7A00] w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shrink-0">
+                            svg
+                        </div>
+                        <div>
+                            <h4 class="font-[500] text-xl md:text-2xl">Задача №153</h4>
+                            <p class="text-xs md:text-sm muted">Скоро просрочится, проверьте сроки</p>
+                        </div>
+                    </div>
+                    <button
+                        class="w-full md:w-auto px-4 py-2 bg-[#1F1F1F] rounded-[5px] text-lg hover:bg-[#252525] border border-white/5 transition-colors">Открыть</button>
+                </div>
+                <div
+                    class="bg-[#111111] border border-white/5 p-4 md:p-8 rounded-[5px] flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div class="flex flex-col md:flex-row items-center text-center md:text-left gap-4 md:gap-8">
+                        <div
+                            class="bg-[#FF7A00] w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shrink-0">
+                            svg
+                        </div>
+                        <div>
+                            <h4 class="font-[500] text-xl md:text-2xl">Задача №153</h4>
+                            <p class="text-xs md:text-sm muted">Скоро просрочится, проверьте сроки</p>
+                        </div>
+                    </div>
+                    <button
+                        class="w-full md:w-auto px-4 py-2 bg-[#1F1F1F] rounded-[5px] text-lg hover:bg-[#252525] border border-white/5 transition-colors">Открыть</button>
+                </div>
+                
+            </div>
+        </main>
+
+        <div class="lg:col-span-2 order-3">
+            <div class="bg-[#151515] border border-white/5 rounded-[5px] p-4">
+                <div class="flex justify-between items-center mb-6 px-2">
+                    <span id="month-label" class="text-base font-[500]">Март 2026</span>
+                    <div class="flex gap-4 text-gray-700">
+                        <button onclick="changeMonth(-1)" class="hover:text-[#FF9A3C]">&larr;</button>
+                        <button onclick="changeMonth(1)" class="hover:text-[#FF9A3C]">&rarr;</button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-7 gap-1 text-center text-sm text-[#fff] mb-3">
+                    <span>пн</span>
+                    <span>вт</span>
+                    <span>ср</span>
+                    <span>чт</span>
+                    <span>пт</span>
+                    <span class="text-[#6B6B6B]">сб</span>
+                    <span class="text-[#6B6B6B]">вс</span>
+                </div>
+                <div id="calendar-grid" class="grid grid-cols-7 gap-1 text-center text-sm text-gray-400"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="scripts/script_employee.js"></script>
+</body>
+
+</html>

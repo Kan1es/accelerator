@@ -12,8 +12,8 @@
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 
-<body class="bg-[#0D0D0D] text-white font-sora min-h-screen flex flex-col overflow-x-hidden">
-    <header class="p-3 md:px-10 flex flex-col md:flex-row justify-between items-center gap-6 z-50 relative">
+<body class="bg-[#0D0D0D] text-white font-sora h-screen flex flex-col overflow-x-hidden">
+    <header class="p-3 md:px-10 flex flex-col md:flex-row justify-between items-center gap-6 z-50 relative shrink-0">
         <div class="flex items-center gap-4">
             <a href="index.html" class="flex items-center gap-6"><img src="images/ВЕКТОР.svg"
                     class="w-14 h-14 md:w-14 md:h-14" alt="Logo">
@@ -22,18 +22,18 @@
         </div>
         <nav class="flex flex-wrap justify-center gap-4 md:gap-12 items-center">
             <a href="employee_dashboard.html" class="nav-item text-m md:text-xl font-light text-[#CC6200]">Главная</a>
-            <a href="#"
+            <a href="employee_tasks.html"
                 class="nav-item text-m md:text-xl opacity-100 font-light hover:text-[#FF9A3C] active:text-[#CC6200]">Задачи</a>
             <a href="#"
                 class="nav-item text-m md:text-xl opacity-100 font-light hover:text-[#FF9A3C] active:text-[#CC6200]">Поддержка</a>
         </nav>
     </header>
 
-    <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 px-4 md:px-10 pb-6">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 px-4 md:px-10 pb-6 lg:flex-1 lg:min-h-0">
 
-        <div class="lg:col-span-3 flex flex-col gap-4 min-h-0 order-2 lg:order-1">
+        <div class="lg:col-span-3 flex flex-col gap-4 min-h-0 order-2 lg:order-1 h-auto lg:h-full">
 
-            <div class="card flex-[4] flex flex-col overflow-hidden min-h-[200px]">
+            <div class="card flex flex-col overflow-hidden min-h-[200px] lg:flex-[4]">
                 <h2 class="p-3 text-center shrink-0 text-m font-normal border-b border-white/5">
                     Список задач</h2>
                 <div class="flex-1 overflow-y-auto custom-scrollbar">
@@ -75,8 +75,9 @@
                 </div>
             </div>
 
-            <div x-data="{ open: true }" :class="open ? 'flex-[6]' : 'flex-none'"
-                class="card flex flex-col overflow-hidden transition-[flex] duration-500 ease-in-out bg-[#151515]">
+            <div x-data="{ open: true }" 
+     :class="open ? 'lg:flex-[6]' : 'flex-none'"
+     class="card flex flex-col overflow-hidden transition-all duration-500 bg-[#151515]">
 
                 <div @click="open = !open"
                     class="p-3 flex justify-between items-center border-b border-[#2A2A2A] bg-[#151515] shrink-0 cursor-pointer">
@@ -116,15 +117,15 @@
         </div>
 
         <main
-            class="lg:col-span-7 bg-[#151515] border border-white/5 rounded-[5px] p-6 md:p-12 flex flex-col order-1 lg:order-2">
-            <div class="text-center mb-8 md:mb-12">
+            class="overflow-y-auto custom-scrollbar lg:col-span-7 bg-[#151515] border border-white/5 rounded-[5px] p-6 md:p-12 flex flex-col order-1 lg:order-2 min-h-0 max-h-screen">
+            <div class="text-center mb-8 md:mb-12 shrink-0">
                 <h1 class="text-2xl md:text-4xl font-[500]">Добрый день, Имя!</h1>
                 <p class="text-[#6B6B6B] text-base md:text-lg">сегодня у тебя <span
                         class="text-white border-b-2 border-[#FF7A00] px-1">8</span> задач</p>
             </div>
 
-            <div class="mb-10 md:mb-16">
-                <div class="w-full bg-[#1A1A1A] h-[6px] rounded-full  ">
+            <div class="mb-10 md:mb-16 shrink-0">
+                <div class="w-full bg-[#1A1A1A] h-[6px] rounded-full">
                     <div class="h-full bg-[#FF7A00] shadow-[0_0_10px_rgba(255,122,0,0.5)] rounded-full"
                         style="width: 62.5%"></div>
                 </div>
@@ -135,60 +136,115 @@
                 </div>
             </div>
 
-            <div class="space-y-4 custom-scrollbar overflow-hidden"> <!--СДЕЛАТЬ ЧТОБЫ ПРИ ОВЕРФЛОУ БЫЛ СКРОЛЛБАР-->
-                <h3 class="text-xl font-[400] secondary">Требует внимания:</h3>
+            <div class=" space-y-4 pr-2">
+                <h3 class="text-xl font-[400] secondary sticky top-0 bg-[#151515] pb-2 z-10">Требует внимания:</h3>
+
                 <div
-                    class="bg-[#111111] border border-white/5 p-4 md:p-8 rounded-[5px] flex flex-col md:flex-row items-center justify-between gap-4">
-                    <div
-                        class="flex flex-col md:flex-row items-center text-center md:text-left gap-4 md:gap-8">
-                        <div
-                            class="bg-[#FF7A00] w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shrink-0">
-                            svg
-                        </div>
-                        <div>
-                            <h4 class="font-[500] text-xl md:text-2xl">Задача №153</h4>
-                            <p class="text-xs md:text-sm muted">Скоро просрочится, проверьте сроки</p>
-                        </div>
-                    </div>
-                    <button
-                        class="w-full md:w-auto px-4 py-2 bg-[#1F1F1F] rounded-[5px] text-lg hover:bg-[#252525] border border-white/5 transition-colors">Открыть</button>
-                </div>
-                <div
-                    class="bg-[#111111] border border-white/5 p-4 md:p-8 rounded-[5px] flex flex-col md:flex-row items-center justify-between gap-4">
+                    class="bg-[#111111] border border-white/5 p-4 md:p-8 rounded-[5px] flex flex-col md:flex-row items-center justify-between gap-4 shrink-0">
                     <div class="flex flex-col md:flex-row items-center text-center md:text-left gap-4 md:gap-8">
                         <div
                             class="bg-[#FF7A00] w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shrink-0">
-                            svg
                         </div>
                         <div>
-                            <h4 class="font-[500] text-xl md:text-2xl">Задача №153</h4>
+                            <h4 class="font-[500] text-xl md:text-2xl uppercase tracking-tighter">Задача №153</h4>
                             <p class="text-xs md:text-sm muted">Скоро просрочится, проверьте сроки</p>
                         </div>
                     </div>
-                    <button
-                        class="w-full md:w-auto px-4 py-2 bg-[#1F1F1F] rounded-[5px] text-lg hover:bg-[#252525] border border-white/5 transition-colors">Открыть</button>
+                    <a class="w-full md:w-auto px-4 py-2 bg-[#1F1F1F] rounded-[5px] text-lg hover:bg-[#252525] border border-white/5 transition-colors hover:cursor-pointer"
+                        href="employee_tasks.html">Открыть</a>
                 </div>
+
                 <div
-                    class="bg-[#111111] border border-white/5 p-4 md:p-8 rounded-[5px] flex flex-col md:flex-row items-center justify-between gap-4">
+                    class="bg-[#111111] border border-white/5 p-4 md:p-8 rounded-[5px] flex flex-col md:flex-row items-center justify-between gap-4 shrink-0">
                     <div class="flex flex-col md:flex-row items-center text-center md:text-left gap-4 md:gap-8">
                         <div
                             class="bg-[#FF7A00] w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shrink-0">
-                            svg
                         </div>
                         <div>
-                            <h4 class="font-[500] text-xl md:text-2xl">Задача №153</h4>
+                            <h4 class="font-[500] text-xl md:text-2xl uppercase tracking-tighter">Задача №153</h4>
                             <p class="text-xs md:text-sm muted">Скоро просрочится, проверьте сроки</p>
                         </div>
                     </div>
-                    <button
-                        class="w-full md:w-auto px-4 py-2 bg-[#1F1F1F] rounded-[5px] text-lg hover:bg-[#252525] border border-white/5 transition-colors">Открыть</button>
+                    <a class="w-full md:w-auto px-4 py-2 bg-[#1F1F1F] rounded-[5px] text-lg hover:bg-[#252525] border border-white/5 transition-colors hover:cursor-pointer"
+                        href="employee_tasks.html">Открыть</a>
                 </div>
-                
+                <div
+                    class="bg-[#111111] border border-white/5 p-4 md:p-8 rounded-[5px] flex flex-col md:flex-row items-center justify-between gap-4 shrink-0">
+                    <div class="flex flex-col md:flex-row items-center text-center md:text-left gap-4 md:gap-8">
+                        <div
+                            class="bg-[#FF7A00] w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shrink-0">
+                        </div>
+                        <div>
+                            <h4 class="font-[500] text-xl md:text-2xl uppercase tracking-tighter">Задача №153</h4>
+                            <p class="text-xs md:text-sm muted">Скоро просрочится, проверьте сроки</p>
+                        </div>
+                    </div>
+                    <a class="w-full md:w-auto px-4 py-2 bg-[#1F1F1F] rounded-[5px] text-lg hover:bg-[#252525] border border-white/5 transition-colors hover:cursor-pointer"
+                        href="employee_tasks.html">Открыть</a>
+                </div>
+                <div
+                    class="bg-[#111111] border border-white/5 p-4 md:p-8 rounded-[5px] flex flex-col md:flex-row items-center justify-between gap-4 shrink-0">
+                    <div class="flex flex-col md:flex-row items-center text-center md:text-left gap-4 md:gap-8">
+                        <div
+                            class="bg-[#FF7A00] w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shrink-0">
+                        </div>
+                        <div>
+                            <h4 class="font-[500] text-xl md:text-2xl uppercase tracking-tighter">Задача №153</h4>
+                            <p class="text-xs md:text-sm muted">Скоро просрочится, проверьте сроки</p>
+                        </div>
+                    </div>
+                    <a class="w-full md:w-auto px-4 py-2 bg-[#1F1F1F] rounded-[5px] text-lg hover:bg-[#252525] border border-white/5 transition-colors hover:cursor-pointer"
+                        href="employee_tasks.html">Открыть</a>
+                </div>
+                <div
+                    class="bg-[#111111] border border-white/5 p-4 md:p-8 rounded-[5px] flex flex-col md:flex-row items-center justify-between gap-4 shrink-0">
+                    <div class="flex flex-col md:flex-row items-center text-center md:text-left gap-4 md:gap-8">
+                        <div
+                            class="bg-[#FF7A00] w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shrink-0">
+                        </div>
+                        <div>
+                            <h4 class="font-[500] text-xl md:text-2xl uppercase tracking-tighter">Задача №153</h4>
+                            <p class="text-xs md:text-sm muted">Скоро просрочится, проверьте сроки</p>
+                        </div>
+                    </div>
+                    <a class="w-full md:w-auto px-4 py-2 bg-[#1F1F1F] rounded-[5px] text-lg hover:bg-[#252525] border border-white/5 transition-colors hover:cursor-pointer"
+                        href="employee_tasks.html">Открыть</a>
+                </div>
+                <div
+                    class="bg-[#111111] border border-white/5 p-4 md:p-8 rounded-[5px] flex flex-col md:flex-row items-center justify-between gap-4 shrink-0">
+                    <div class="flex flex-col md:flex-row items-center text-center md:text-left gap-4 md:gap-8">
+                        <div
+                            class="bg-[#FF7A00] w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shrink-0">
+                        </div>
+                        <div>
+                            <h4 class="font-[500] text-xl md:text-2xl uppercase tracking-tighter">Задача №153</h4>
+                            <p class="text-xs md:text-sm muted">Скоро просрочится, проверьте сроки</p>
+                        </div>
+                    </div>
+                    <a class="w-full md:w-auto px-4 py-2 bg-[#1F1F1F] rounded-[5px] text-lg hover:bg-[#252525] border border-white/5 transition-colors hover:cursor-pointer"
+                        href="employee_tasks.html">Открыть</a>
+                </div>
+                <div
+                    class="bg-[#111111] border border-white/5 p-4 md:p-8 rounded-[5px] flex flex-col md:flex-row items-center justify-between gap-4 shrink-0">
+                    <div class="flex flex-col md:flex-row items-center text-center md:text-left gap-4 md:gap-8">
+                        <div
+                            class="bg-[#FF7A00] w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shrink-0">
+                        </div>
+                        <div>
+                            <h4 class="font-[500] text-xl md:text-2xl uppercase tracking-tighter">Задача №153</h4>
+                            <p class="text-xs md:text-sm muted">Скоро просрочится, проверьте сроки</p>
+                        </div>
+                    </div>
+                    <a class="w-full md:w-auto px-4 py-2 bg-[#1F1F1F] rounded-[5px] text-lg hover:bg-[#252525] border border-white/5 transition-colors hover:cursor-pointer"
+                        href="employee_tasks.html">Открыть</a>
+                </div>
+
             </div>
+
         </main>
 
-        <div class="lg:col-span-2 order-3">
-            <div class="bg-[#151515] border border-white/5 rounded-[5px] p-4">
+        <div class="lg:col-span-2 order-3 flex items-start">
+            <div class="bg-[#151515] border border-white/5 rounded-[5px] p-4 w-full h-fit">
                 <div class="flex justify-between items-center mb-6 px-2">
                     <span id="month-label" class="text-base font-[500]">Март 2026</span>
                     <div class="flex gap-4 text-gray-700">

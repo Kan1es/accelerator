@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ВЕКТОР — Задачи</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles/styles_employee.css">
+    <script defer src="https://unpkg.com/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+
+<body class="bg-[#0D0D0D] text-white font-sora h-screen flex flex-col overflow-x-hidden">
+    <header class="p-3 md:px-10 flex flex-col md:flex-row justify-between items-center gap-6 z-50 relative shrink-0">
+        <div class="flex items-center gap-4">
+            <a href="index.html" class="flex items-center gap-6">
+                <img src="images/ВЕКТОР.svg" class="w-14 h-14" alt="Logo">
+                <span class="text-2xl md:text-5xl font-semibold tracking-tighter uppercase">ВЕКТОР</span>
+            </a>
+        </div>
+        <nav class="flex flex-wrap justify-center gap-4 md:gap-12 items-center">
+            <a href="employee_tasks.html" class="nav-item text-m md:text-xl font-light text-[#CC6200]">Задачи</a>
+            <a href="employee_dashboard.html"
+                class="nav-item text-m md:text-xl font-light hover:text-[#FF9A3C]">Главная</a>
+            <a href="#" class="nav-item text-m md:text-xl font-light hover:text-[#FF9A3C]">Поддержка</a>
+        </nav>
+    </header>
+
+    <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-6 px-4 md:px-10 pb-6">
+
+        <div class="lg:col-span-3 flex flex-col gap-4 min-h-0 order-2 lg:order-1 h-auto lg:h-full">
+            <div class="card p-6 flex flex-col gap-4 shrink-0">
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-16 h-16 rounded-full bg-[#D9D9D9] flex items-center justify-center text-black text-[10px] font-bold shrink-0">
+                        ФОТО</div>
+                    <div class="overflow-hidden">
+                        <h2 class="text-xl font-semibold">Имя Фамилия</h2>
+                        <p class="text-m text-[#6B6B6B]">Должность</p>
+                    </div>
+                </div>
+                <div class="mt-4 group relative" title="5/8 задач">
+
+                    <p class="text-sm text-center text-[#6B6B6B]  mb-2 font-medium">Шкала
+                        выполнения</p>
+
+                    <div class="w-full bg-[#1A1A1A] h-2 rounded-full overflow-hidden mb-1">
+                        <div class="h-full bg-[#FF7A00] transition-all duration-500 shadow-[0_0_10px_rgba(255,122,0,0.3)]"
+                            style="width: 62.5%"></div>
+
+                    </div>
+                    <div class="flex flex-row justify-between">
+                        <p class="text-sm text-center text-[#6B6B6B] mb-2 font-medium ">0</p>
+                        <p class="text-sm text-center text-[#6B6B6B] mb-2 font-semibold ">62,5%</p>
+                        <p class="text-sm text-center text-[#6B6B6B] mb-2 font-medium">100</p>
+                    </div>
+                </div>
+            </div>
+
+            <div x-data="{ open: true }" :class="open ? 'flex-1' : 'flex-none'"
+                class="card flex flex-col overflow-hidden transition-all duration-500 ease-in-out">
+                <div @click="open = !open"
+                    class="p-3 flex justify-between items-center border-b border-white/5 cursor-pointer shrink-0">
+                    <div class="flex items-center gap-2">
+                        <img src="images/ВЕКТОР.svg" class="w-8">
+                        <div>
+                            <p class="text-sm font-[600]">ВЕКТОР</p>
+                            <span class="online flex items-center gap-1 text-[12px]">
+                                <span class="w-1.5 h-1.5 bg-[#00FF66] rounded-full"></span> В сети
+                            </span>
+                        </div>
+                    </div>
+                    <button class="text-[#6B6B6B] transition-transform duration-500" :class="!open && 'rotate-180'">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="3">
+                            <path d="M6 9l6 6 6-6" />
+                        </svg>
+                    </button>
+                </div>
+                <div x-show="open" x-collapse.duration.500ms class="flex flex-col flex-1 overflow-hidden">
+                    <div class="p-3 flex flex-col gap-2 overflow-y-auto custom-scrollbar">
+                        <button onclick="setChatQuery('Статус по задаче №153')" class="chat-pill text-sm">Статус по
+                            задаче №153</button>
+                    </div>
+                    <div class="mt-auto p-3 border-t border-white/5 bg-[#111111]">
+                        <div class="flex items-center gap-2 bg-black/40 p-2 px-3 rounded-xl border border-white/5">
+                            <input id="chat-input" class="bg-transparent outline-none text-sm flex-1" type="text"
+                                placeholder="Спросить...">
+                            <button class="text-[#FF7A00]">➤</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <main x-data="taskManager()" class="lg:col-span-7 bg-[#151515] border border-white/5 rounded-[5px] flex flex-col order-1 lg:order-2 
+min-h-0 
+lg:max-h-full lg:overflow-hidden 
+relative">
+
+            <template x-if="showConfirm">
+                <div class="absolute inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <div
+                        class="bg-[#111111] border border-white/10 p-8 rounded-[5px] max-w-sm w-full shadow-2xl text-center">
+                        <div
+                            class="w-16 h-16 bg-[#FF7A00]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#FF7A00"
+                                stroke-width="2">
+                                <path d="M20 6L9 17l-5-5" />
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold uppercase mb-2">Завершить задачу?</h3>
+                        <p class="text-gray-400 text-sm mb-6">Вы подтверждаете, что работа по задаче №<span
+                                x-text="pendingTaskId"></span> выполнена?</p>
+                        <div class="flex gap-3">
+                            <button @click="confirmDone()"
+                                class="flex-1 bg-[#FFF] hover:bg-[#FF9A3C] active:bg-[#CC6200] text-black font-semibold py-3 rounded-[3px] transition-colors text-sm">Да,
+                                выполнено</button>
+                            <button @click="cancelDone()"
+                                class="flex-1 bg-[#1F1F1F] hover:bg-[#252525] text-white py-3 rounded-[3px] transition-colors text-sm border border-white/5">Отмена</button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <div class="p-6 md:p-10 border-b border-white/5 shrink-0"> <!--ПРОБЛЕМА АДАПТАЦИИ НА МОБИЛКИ-->
+                <h1 class="text-2xl md:text-4xl font-[500] mb-6">Мои задачи</h1>
+
+                <div class="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center">
+                    <div class="flex gap-2 overflow-x-auto pb-2 xl:pb-0 no-scrollbar">
+                        <button @click="filter = 'all'" :class="filter === 'all' ? 'active' : ''"
+                            class="filter-btn">Все</button>
+                        <button @click="filter = 'progress'" :class="filter === 'progress' ? 'active' : ''"
+                            class="filter-btn">В работе</button>
+                        <button @click="filter = 'assigned'" :class="filter === 'assigned' ? 'active' : ''"
+                            class="filter-btn">Назначено</button>
+                        <button @click="filter = 'done'" :class="filter === 'done' ? 'active' : ''"
+                            class="filter-btn">Выполнено</button>
+                    </div>
+
+                    <div class="relative w-full xl:w-64">
+                        <input x-model="search" type="text" placeholder="Поиск по ID или названию"
+                            class="w-full bg-[#0D0D0D] border border-white/5 rounded-[5px] py-2 px-4 pl-10 text-sm focus:border-[#FF7A00] outline-none">
+                        <span class="absolute left-3 top-2.5 text-[#6B6B6B]"><svg width="18" height="18"
+                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 lg:overflow-y-auto custom-scrollbar p-6 md:p-10 space-y-4">
+                <template x-for="task in filteredTasks" :key="task.id">
+                    <div class="task-card border border-white/5 bg-[#111111] p-6 rounded-[5px] flex flex-col md:flex-row justify-between items-start md:items-center gap-6 transition-all"
+                        :class="task.status === 'done' ? 'opacity-40 grayscale-[0.3]' : 'hover:border-white/20'">
+
+                        <div class="flex flex-col gap-2">
+                            <h4 class="text-xl font-bold text-white tracking-tight">
+                                Задача №<span x-text="task.id"></span> – <span x-text="task.title"></span>
+                            </h4>
+
+                            <div class="space-y-1">
+                                <p class="text-sm text-[#6B6B6B] font-medium">
+                                    <span x-text="task.dept"></span> • Назначил: {Имя Фамилия}
+                                </p>
+
+                                <p class="text-sm text-gray-300">
+                                    <span class="text-[#6B6B6B]">Комментарий:</span>
+                                    <span x-text="task.comment || 'нет комментария'"></span>
+                                </p>
+
+                                <p class="text-sm text-white">
+                                    <span class="text-[#6B6B6B]">Срок:</span>
+                                    <span
+                                        x-text="task.deadline === 'Без срока' ? 'Без срока' : 'сегодня до ' + task.deadline"></span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col items-center md:items-end gap-2 shrink-0 self-center md:self-auto">
+                            <button @click="changeStatus(task.id)" :disabled="task.status === 'done'"
+                                class="min-w-[140px] px-4 py-2 rounded border flex items-center justify-center gap-2 transition-all font-bold text-sm uppercase"
+                                :class="{
+                                    'border-red-500 text-red-500 bg-red-500/5 hover:border-red-400 hover:shadow-[0_0_5px_rgba(239,68,68,0.5)]': task.status === 'assigned',
+                                    'border-[#FF7A00] text-[#FF7A00] bg-[#FF7A00]/5 hover:border-[#FF9A3C] hover:shadow-[0_0_5px_rgba(255,122,0,0.5)]': task.status === 'progress',
+                                    'border-green-500 text-green-500 bg-green-500/5 hover:border-green-400 hover:shadow-[0_0_5px_rgba(34,197,94,0.5)]': task.status === 'done'
+                                }">
+                                <template x-if="task.status === 'assigned'">📑</template>
+                                <template x-if="task.status === 'progress'">🕒</template>
+                                <template x-if="task.status === 'done'">✅</template>
+
+                                <span x-text="statusStyles[task.status].label"></span>
+                            </button>
+
+                            <span x-show="task.status !== 'done'"
+                                class="text-xs text-[#6B6B6B] text-center md:text-right leading-none">
+                                нажмите для<br>переключения статуса
+                            </span>
+                        </div>
+                    </div>
+                </template>
+
+                <div x-show="filteredTasks.length === 0"
+                    class="text-center py-20 text-gray-700 uppercase text-xs tracking-[0.3em]">
+                    Задач не найдено
+                </div>
+            </div>
+        </main>
+        <div class="lg:col-span-2 flex flex-col gap-4 min-h-0 order-3 h-auto lg:h-full">
+            <div class="bg-[#151515] border border-white/5 rounded-[5px] p-4">
+                <div class="flex justify-between items-center mb-6 px-2">
+                    <span id="month-label" class="text-base font-[500]">Март 2026</span>
+                    <div class="flex gap-4 text-gray-700">
+                        <button onclick="changeMonth(-1)" class="hover:text-[#FF9A3C]">&larr;</button>
+                        <button onclick="changeMonth(1)" class="hover:text-[#FF9A3C]">&rarr;</button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-7 gap-1 text-center text-sm text-[#fff] mb-3">
+                    <span>пн</span>
+                    <span>вт</span>
+                    <span>ср</span>
+                    <span>чт</span>
+                    <span>пт</span>
+                    <span class="text-[#6B6B6B]">сб</span>
+                    <span class="text-[#6B6B6B]">вс</span>
+                </div>
+                <div id="calendar-grid" class="grid grid-cols-7 gap-1 text-center text-sm text-gray-400"></div>
+            </div>
+
+            <div
+                class="bg-[#151515] border border-white/5 rounded-[5px] p-4 flex-1 flex flex-col min-h-0 overflow-y-auto">
+                <h3
+                    class="text-center text-xs font-bold uppercase text-[#6B6B6B] pb-2 border-b border-white/5 tracking-wider">
+                    Внеплановые встречи</h3>
+
+                <div class="space-y-3  pr-2 flex-col">
+                    <div class="p-4">
+                        <div
+                            class="flex space-y-3 items-start gap-3 pb-4 border-b border-white/5  hover:border-white/10 transition-colors">
+                            <div class="shrink-0 mt-3 ">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                        d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z"
+                                        stroke="#6B6B6B" stroke-width="2" stroke-linejoin="round" />
+                                    <path d="M3 10H21" stroke="#6B6B6B" stroke-width="2" />
+                                    <path d="M16 2V6" stroke="#0085FF" stroke-width="2" stroke-linecap="round" />
+                                    <path d="M8 2V6" stroke="#0085FF" stroke-width="2" stroke-linecap="round" />
+                                    <circle cx="7" cy="14" r="1" fill="#6B6B6B" />
+                                    <circle cx="12" cy="14" r="1" fill="#6B6B6B" />
+                                    <circle cx="17" cy="14" r="1" fill="#6B6B6B" />
+                                    <circle cx="7" cy="18" r="1" fill="#6B6B6B" />
+                                    <circle cx="12" cy="18" r="1" fill="#6B6B6B" />
+                                </svg>
+                            </div>
+
+                            <div class="flex flex-col gap-1">
+                                <p class="text-sm font-bold text-white leading-tight">Встреча с менеджером</p>
+
+                                <p class="text-[11px] text-gray-500 leading-normal">
+                                    Комментарий: необходимо обсудить план текущей работы
+                                </p>
+
+                                <p class="text-[11px] mt-1">
+                                    <span class="text-[#FF7A00] font-bold">Срок: сегодня, 15:00</span>
+                                    <span class="text-gray-600 ml-1">(хз как сделать авто обновление)</span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div
+                            class="flex space-y-3 items-start gap-3 pb-4 border-b border-white/5  hover:border-white/10 transition-colors">
+                            <div class="shrink-0 mt-3 ">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                        d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z"
+                                        stroke="#6B6B6B" stroke-width="2" stroke-linejoin="round" />
+                                    <path d="M3 10H21" stroke="#6B6B6B" stroke-width="2" />
+                                    <path d="M16 2V6" stroke="#0085FF" stroke-width="2" stroke-linecap="round" />
+                                    <path d="M8 2V6" stroke="#0085FF" stroke-width="2" stroke-linecap="round" />
+                                    <circle cx="7" cy="14" r="1" fill="#6B6B6B" />
+                                    <circle cx="12" cy="14" r="1" fill="#6B6B6B" />
+                                    <circle cx="17" cy="14" r="1" fill="#6B6B6B" />
+                                    <circle cx="7" cy="18" r="1" fill="#6B6B6B" />
+                                    <circle cx="12" cy="18" r="1" fill="#6B6B6B" />
+                                </svg>
+                            </div>
+
+                            <div class="flex flex-col gap-1">
+                                <p class="text-sm font-bold text-white leading-tight">Встреча с менеджером</p>
+
+                                <p class="text-[11px] text-gray-500 leading-normal">
+                                    Комментарий: необходимо обсудить план текущей работы
+                                </p>
+
+                                <p class="text-[11px] mt-1">
+                                    <span class="text-[#FF7A00] font-bold">Срок: сегодня, 15:00</span>
+                                    <span class="text-gray-600 ml-1">(хз как сделать авто обновление)</span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div
+                            class="flex space-y-3 items-start gap-3 pb-4 border-b border-white/5  hover:border-white/10 transition-colors">
+                            <div class="shrink-0 mt-3 ">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                        d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z"
+                                        stroke="#6B6B6B" stroke-width="2" stroke-linejoin="round" />
+                                    <path d="M3 10H21" stroke="#6B6B6B" stroke-width="2" />
+                                    <path d="M16 2V6" stroke="#0085FF" stroke-width="2" stroke-linecap="round" />
+                                    <path d="M8 2V6" stroke="#0085FF" stroke-width="2" stroke-linecap="round" />
+                                    <circle cx="7" cy="14" r="1" fill="#6B6B6B" />
+                                    <circle cx="12" cy="14" r="1" fill="#6B6B6B" />
+                                    <circle cx="17" cy="14" r="1" fill="#6B6B6B" />
+                                    <circle cx="7" cy="18" r="1" fill="#6B6B6B" />
+                                    <circle cx="12" cy="18" r="1" fill="#6B6B6B" />
+                                </svg>
+                            </div>
+
+                            <div class="flex flex-col gap-1">
+                                <p class="text-sm font-bold text-white leading-tight">Встреча с менеджером</p>
+
+                                <p class="text-[11px] text-gray-500 leading-normal">
+                                    Комментарий: необходимо обсудить план текущей работы
+                                </p>
+
+                                <p class="text-[11px] mt-1">
+                                    <span class="text-[#FF7A00] font-bold">Срок: сегодня, 15:00</span>
+                                    <span class="text-gray-600 ml-1">(хз как сделать авто обновление)</span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div
+                            class="flex space-y-3 items-start gap-3 pb-4 border-b border-white/5  hover:border-white/10 transition-colors">
+                            <div class="shrink-0 mt-3 ">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                        d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z"
+                                        stroke="#6B6B6B" stroke-width="2" stroke-linejoin="round" />
+                                    <path d="M3 10H21" stroke="#6B6B6B" stroke-width="2" />
+                                    <path d="M16 2V6" stroke="#0085FF" stroke-width="2" stroke-linecap="round" />
+                                    <path d="M8 2V6" stroke="#0085FF" stroke-width="2" stroke-linecap="round" />
+                                    <circle cx="7" cy="14" r="1" fill="#6B6B6B" />
+                                    <circle cx="12" cy="14" r="1" fill="#6B6B6B" />
+                                    <circle cx="17" cy="14" r="1" fill="#6B6B6B" />
+                                    <circle cx="7" cy="18" r="1" fill="#6B6B6B" />
+                                    <circle cx="12" cy="18" r="1" fill="#6B6B6B" />
+                                </svg>
+                            </div>
+
+                            <div class="flex flex-col gap-1">
+                                <p class="text-sm font-bold text-white leading-tight">Встреча с менеджером</p>
+
+                                <p class="text-[11px] text-gray-500 leading-normal">
+                                    Комментарий: необходимо обсудить план текущей работы
+                                </p>
+
+                                <p class="text-[11px] mt-1">
+                                    <span class="text-[#FF7A00] font-bold">Срок: сегодня, 15:00</span>
+                                    <span class="text-gray-600 ml-1">(хз как сделать авто обновление)</span>
+                                </p>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="scripts/script_employee.js"></script>
+</body>
+
+</html>

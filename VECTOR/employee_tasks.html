@@ -12,7 +12,7 @@
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 
-<body class="bg-[#0D0D0D] text-white font-sora h-screen flex flex-col overflow-x-hidden">
+<body class="bg-[#0D0D0D] text-white font-sora min-h-0 lg:h-screen flex flex-col overflow-x-hidden">
     <header class="p-3 md:px-10 flex flex-col md:flex-row justify-between items-center gap-6 z-50 relative shrink-0">
         <div class="flex items-center gap-4">
             <a href="index.html" class="flex items-center gap-6">
@@ -24,13 +24,13 @@
             <a href="employee_tasks.html" class="nav-item text-m md:text-xl font-light text-[#CC6200]">Задачи</a>
             <a href="employee_dashboard.html"
                 class="nav-item text-m md:text-xl font-light hover:text-[#FF9A3C]">Главная</a>
-            <a href="#" class="nav-item text-m md:text-xl font-light hover:text-[#FF9A3C]">Поддержка</a>
+            <a href="employee_support.html" class="nav-item text-m md:text-xl font-light hover:text-[#FF9A3C]">Поддержка</a>
         </nav>
     </header>
 
-    <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-6 px-4 md:px-10 pb-6">
+    <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 h-screen gap-6 px-4 md:px-10 pb-6">
 
-        <div class="lg:col-span-3 flex flex-col gap-4 min-h-0 order-2 lg:order-1 h-auto lg:h-full">
+        <div class="lg:col-span-3 flex flex-col gap-4 min-h-0 order-2 lg:order-1 h-full lg:h-full">
             <div class="card p-6 flex flex-col gap-4 shrink-0">
                 <div class="flex items-center gap-4">
                     <div
@@ -95,10 +95,7 @@
             </div>
         </div>
 
-        <main x-data="taskManager()" class="lg:col-span-7 bg-[#151515] border border-white/5 rounded-[5px] flex flex-col order-1 lg:order-2 
-min-h-0 
-lg:max-h-full lg:overflow-hidden 
-relative">
+        <main x-data="taskManager()" class="lg:col-span-7 flex flex-col min-h-0  overflow-hidden bg-[#151515] border border-white/5 rounded-[5px] order-1 lg:order-2">
 
             <template x-if="showConfirm">
                 <div class="absolute inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
@@ -125,22 +122,22 @@ relative">
                 </div>
             </template>
 
-            <div class="p-6 md:p-10 border-b border-white/5 shrink-0"> <!--ПРОБЛЕМА АДАПТАЦИИ НА МОБИЛКИ-->
+            <div class="p-1 md:p-10 border-b border-white/5 shrink-0"> <!--ПРОБЛЕМА АДАПТАЦИИ НА МОБИЛКИ-->
                 <h1 class="text-2xl md:text-4xl font-[500] mb-6">Мои задачи</h1>
 
-                <div class="flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center">
-                    <div class="flex gap-2 overflow-x-auto pb-2 xl:pb-0 no-scrollbar">
+                <div class="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+                    <div class="flex gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar whitespace-nowrap w-full md:w-auto flex-wrap items-center">
                         <button @click="filter = 'all'" :class="filter === 'all' ? 'active' : ''"
-                            class="filter-btn">Все</button>
+                            class="filter-btn shrink-0">Все</button>
                         <button @click="filter = 'progress'" :class="filter === 'progress' ? 'active' : ''"
-                            class="filter-btn">В работе</button>
+                            class="filter-btn shrink-0">В работе</button>
                         <button @click="filter = 'assigned'" :class="filter === 'assigned' ? 'active' : ''"
-                            class="filter-btn">Назначено</button>
+                            class="filter-btn shrink-0">Назначено</button>
                         <button @click="filter = 'done'" :class="filter === 'done' ? 'active' : ''"
-                            class="filter-btn">Выполнено</button>
+                            class="filter-btn shrink-0">Выполнено</button>
                     </div>
 
-                    <div class="relative w-full xl:w-64">
+                    <div class="relative w-1/2 md:w-1/3 shrink-0">
                         <input x-model="search" type="text" placeholder="Поиск по ID или названию"
                             class="w-full bg-[#0D0D0D] border border-white/5 rounded-[5px] py-2 px-4 pl-10 text-sm focus:border-[#FF7A00] outline-none">
                         <span class="absolute left-3 top-2.5 text-[#6B6B6B]"><svg width="18" height="18"
@@ -153,7 +150,7 @@ relative">
                 </div>
             </div>
 
-            <div class="flex-1 lg:overflow-y-auto custom-scrollbar p-6 md:p-10 space-y-4">
+            <div class="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-6 md:p-10 space-y-4">
                 <template x-for="task in filteredTasks" :key="task.id">
                     <div class="task-card border border-white/5 bg-[#111111] p-6 rounded-[5px] flex flex-col md:flex-row justify-between items-start md:items-center gap-6 transition-all"
                         :class="task.status === 'done' ? 'opacity-40 grayscale-[0.3]' : 'hover:border-white/20'">
@@ -210,7 +207,7 @@ relative">
                 </div>
             </div>
         </main>
-        <div class="lg:col-span-2 flex flex-col gap-4 min-h-0 order-3 h-auto lg:h-full">
+        <div class="lg:col-span-2 flex flex-col gap-4 min-h-0 order-3 h-full lg:h-full">
             <div class="bg-[#151515] border border-white/5 rounded-[5px] p-4">
                 <div class="flex justify-between items-center mb-6 px-2">
                     <span id="month-label" class="text-base font-[500]">Март 2026</span>
@@ -237,8 +234,41 @@ relative">
                     class="text-center text-xs font-bold uppercase text-[#6B6B6B] pb-2 border-b border-white/5 tracking-wider">
                     Внеплановые встречи</h3>
 
-                <div class="space-y-3  pr-2 flex-col">
+                <div class="flex flex-col space-y-3 pr-2">
                     <div class="p-4">
+                        <div
+                            class="flex space-y-3 items-start gap-3 pb-4 border-b border-white/5  hover:border-white/10 transition-colors">
+                            <div class="shrink-0 mt-3 ">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path
+                                        d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z"
+                                        stroke="#6B6B6B" stroke-width="2" stroke-linejoin="round" />
+                                    <path d="M3 10H21" stroke="#6B6B6B" stroke-width="2" />
+                                    <path d="M16 2V6" stroke="#0085FF" stroke-width="2" stroke-linecap="round" />
+                                    <path d="M8 2V6" stroke="#0085FF" stroke-width="2" stroke-linecap="round" />
+                                    <circle cx="7" cy="14" r="1" fill="#6B6B6B" />
+                                    <circle cx="12" cy="14" r="1" fill="#6B6B6B" />
+                                    <circle cx="17" cy="14" r="1" fill="#6B6B6B" />
+                                    <circle cx="7" cy="18" r="1" fill="#6B6B6B" />
+                                    <circle cx="12" cy="18" r="1" fill="#6B6B6B" />
+                                </svg>
+                            </div>
+
+                            <div class="flex flex-col gap-1">
+                                <p class="text-sm font-bold text-white leading-tight">Встреча с менеджером</p>
+
+                                <p class="text-[11px] text-gray-500 leading-normal">
+                                    Комментарий: необходимо обсудить план текущей работы
+                                </p>
+
+                                <p class="text-[11px] mt-1">
+                                    <span class="text-[#FF7A00] font-bold">Срок: сегодня, 15:00</span>
+                                    <span class="text-gray-600 ml-1">(хз как сделать авто обновление)</span>
+                                </p>
+                            </div>
+                        </div>
+
                         <div
                             class="flex space-y-3 items-start gap-3 pb-4 border-b border-white/5  hover:border-white/10 transition-colors">
                             <div class="shrink-0 mt-3 ">

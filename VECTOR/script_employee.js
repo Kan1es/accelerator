@@ -161,3 +161,148 @@ function taskManager() {
         }
     }
 }
+
+// Логика чата технической поддержки
+function supportChat() {
+    return {
+        userInput: '',
+        showInitialButtons: true,
+        messages: [],
+        
+        // Инициализация (если нужно что-то сделать при загрузке)
+        init() {
+            console.log("Чат поддержки ВЕКТОР готов");
+        },
+
+        // 1. Соединение с оператором
+        connectOperator() {
+            this.showInitialButtons = false;
+            this.addMessage('user', 'Нет, соедини меня с оператором');
+            
+            // Имитируем небольшую задержку ответа
+            setTimeout(() => {
+                this.addMessage('bot', 'Хорошо, уже позвал сотрудника технической поддержки. Пожалуйста, ожидайте ответа в этом чате.');
+            }, 800);
+        },
+
+        // 2. Попытка через ИИ (заготовка под твою нейронку)
+        tryAI() {
+            this.showInitialButtons = false;
+            this.addMessage('user', 'Да, давай попробуем');
+            
+            setTimeout(() => {
+                this.addMessage('bot', 'Делаю запрос к интеллектуальной системе "ВЕКТОР-ИИ"...');
+                
+                // ТУТ БУДЕТ ТВОЙ FETCH К API
+                setTimeout(() => {
+                    this.addMessage('bot', 'Ошибка: API-ключ не найден. Система ИИ временно недоступна. Пожалуйста, введите ваш вопрос вручную для оператора.');
+                }, 1500);
+            }, 800);
+        },
+
+        // 3. Отправка сообщения пользователем
+        sendMessage() {
+            const text = this.userInput.trim();
+            if (text === '') return;
+
+            this.addMessage('user', text);
+            this.userInput = '';
+            this.showInitialButtons = false;
+            
+            // Здесь можно добавить проверку: если ИИ подключен — слать запрос ему, 
+            // если нет — просто уведомление об ожидании оператора.
+            setTimeout(() => {
+                if (this.messages.length > 5 && !this.aiActive) {
+                    this.addMessage('bot', 'Оператор получил ваше сообщение и ответит в течение нескольких минут.');
+                }
+            }, 1000);
+        },
+
+        // Вспомогательная функция добавления сообщения и автоскролла
+        addMessage(role, text) {
+            this.messages.push({ 
+                id: Date.now(), 
+                role: role, // 'user' или 'bot'
+                text: text 
+            });
+
+            // Автоскролл вниз после рендеринга нового сообщения
+            this.$nextTick(() => {
+                const chatWin = document.getElementById('chat-window');
+                if (chatWin) {
+                    chatWin.scrollTo({ top: chatWin.scrollHeight, behavior: 'smooth' });
+                }
+            });
+        }
+    }
+}
+
+function supportChat() {
+    return {
+        userInput: '',
+        showInitialButtons: true,
+        messages: [],
+        selectedFile: null, // Добавили сюда переменную файла
+
+        // Вызов окна выбора файла
+        triggerFileSelect() {
+            document.getElementById('file-input').click();
+        },
+
+        // Обработка файла
+        handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                this.selectedFile = file;
+            }
+        },
+
+        connectOperator() {
+            this.showInitialButtons = false;
+            this.addMessage('user', 'Нет, соедини меня с оператором');
+            setTimeout(() => {
+                this.addMessage('bot', 'Хорошо, уже позвал сотрудника технической поддержки. Пожалуйста, ожидайте ответа в этом чате.');
+            }, 800);
+        },
+
+        tryAI() {
+            this.showInitialButtons = false;
+            this.addMessage('user', 'Да, давай попробуем');
+            setTimeout(() => {
+                this.addMessage('bot', 'Делаю запрос к интеллектуальной системе "ВЕКТОР-ИИ"...');
+                setTimeout(() => {
+                    this.addMessage('bot', 'Ошибка: API-ключ не найден. Система ИИ временно недоступна. Пожалуйста, введите ваш вопрос вручную для оператора.');
+                }, 1500);
+            }, 800);
+        },
+
+        sendMessage() {
+            // Если есть и текст, и файл — отправляем вместе
+            if (this.userInput.trim() === '' && !this.selectedFile) return;
+
+            let messageText = this.userInput;
+            if (this.selectedFile) {
+                messageText += ` (Файл: ${this.selectedFile.name})`;
+            }
+
+            this.addMessage('user', messageText);
+            
+            // Сброс полей
+            this.userInput = '';
+            this.selectedFile = null;
+            this.showInitialButtons = false;
+
+            setTimeout(() => {
+                this.addMessage('bot', 'Ваше сообщение получено. Оператор свяжется с вами.');
+            }, 1000);
+        },
+
+        addMessage(role, text) {
+            this.messages.push({ id: Date.now(), role, text });
+            this.$nextTick(() => {
+                const win = document.getElementById('chat-window');
+                if (win) win.scrollTo({ top: win.scrollHeight, behavior: 'smooth' });
+            });
+        }
+    }
+}

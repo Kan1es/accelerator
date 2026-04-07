@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ВЕКТОР — Техническая поддержка</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles/styles_employee.css">
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+
+<body class="bg-[#0D0D0D] text-white font-sora h-screen flex flex-col overflow-hidden">
+
+    <header class="p-3 md:px-10 flex flex-col md:flex-row justify-between items-center gap-6 z-50 relative shrink-0">
+        <div class="flex items-center gap-4">
+            <a href="index.html" class="flex items-center gap-6">
+                <img src="images/ВЕКТОР.svg" class="w-14 h-14" alt="Logo">
+                <span class="text-2xl md:text-5xl font-semibold tracking-tighter uppercase">ВЕКТОР</span>
+            </a>
+        </div>
+        <nav class="flex flex-wrap justify-center gap-4 md:gap-12 items-center">
+            <a href="employee_support.html" class="nav-item text-m md:text-xl font-light text-[#CC6200]">Поддержка</a>
+            <a href="employee_tasks.html"
+                class="nav-item text-m md:text-xl font-light hover:text-[#FF9A3C] active:text-[#CC6200]">Задачи</a>
+            <a href="employee_dashboard.html"
+                class="nav-item text-m md:text-xl font-light hover:text-[#FF9A3C] active:text-[#CC6200]">Главная</a>
+        </nav>
+    </header>
+
+    <main x-data="supportChat()" class="flex-1 flex flex-col max-w-4xl mx-auto w-full px-4 pb-6 min-h-0">
+
+        <div class="flex-1 overflow-y-auto custom-scrollbar space-y-6 py-10 pr-2" id="chat-window">
+
+            <div class="flex gap-4 max-w-[80%]">
+                <div class="shrink-0 flex">
+                    <img src="images/ВЕКТОР.svg" class="w-8 h-8 md:w-10 md:h-10">
+                    <div class="w-2 h-2 bg-[#00FF66] rounded-full mt-9 border border-black"></div>
+                </div>
+                <div class="space-y-2">
+                    <h3 class="font-bold text-lg uppercase">ВЕКТОР</h3>
+                    <p class="text-sm md:text-base text-gray-300 ">
+                        Здравствуйте, Имя! Большое спасибо за Ваше обращение в Техническую поддержку. Вам ответит первый
+                        освободившийся оператор как можно скорее. Большое спасибо за Ваше ожидание.
+                    </p>
+                    <p class="text-sm md:text-base text-gray-300">Подскажите, возможно, я могу помочь с Вашим вопросом?
+                    </p>
+                </div>
+            </div>
+
+            <template x-for="msg in messages" :key="msg.id">
+                <div :class="msg.role === 'user' ? 'flex justify-end' : 'flex gap-4 max-w-[80%]'">
+                    <template x-if="msg.role === 'bot'">
+                        <div class="shrink-0"><img src="images/ВЕКТОР.svg" class="w-8 h-8"></div>
+                    </template>
+                    <div
+                        :class="msg.role === 'user' ? 'bg-[#1F1F1F] border border-white/10 p-3 px-5 rounded-2xl' : 'space-y-1'">
+                        <template x-if="msg.role === 'bot'">
+                            <h3 class="font-bold text-xs uppercase text-gray-400">ВЕКТОР</h3>
+                        </template>
+                        <p class="text-sm md:text-base" :class="msg.role === 'bot' ? 'text-gray-300' : 'text-white'"
+                            x-text="msg.text"></p>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <div x-show="showInitialButtons" class="flex flex-col items-end gap-3 mb-6">
+            <button @click="connectOperator()"
+                class="px-6 py-2 bg-transparent border border-white/20 rounded-full text-sm hover:bg-white/5 transition-all">
+                Нет, соедини меня с оператором
+            </button>
+            <button @click="tryAI()"
+                class="px-6 py-2 bg-transparent border border-white/20 rounded-full text-sm hover:bg-white/5 transition-all">
+                Да, давай попробуем
+            </button>
+        </div>
+
+        <div class="mt-auto shrink-0 w-full max-w-4xl mx-auto px-2" x-data="supportChat()">
+    <div class="relative flex items-center bg-[#111111] border border-white/5 rounded-2xl p-1.5 focus-within:border-white/10 transition-colors">
+        
+        <input type="file" id="file-input" class="hidden" @change="handleFileSelect($event)">
+
+        <button type="button" @click="triggerFileSelect()" class="p-2 text-gray-500 hover:text-white transition-colors">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+        </button>
+
+        <input 
+            type="text" 
+            x-model="userInput"
+            @keyup.enter="sendMessage()"
+            placeholder="Спросите о чем-нибудь..." 
+            class="flex-1 bg-transparent border-none outline-none text-sm px-2 text-white placeholder:text-gray-600"
+        >
+
+        <button @click="sendMessage()" class="p-2 text-[#FF7A00] hover:text-[#FF9A3C] transition-colors">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+            </svg>
+        </button>
+    </div>
+
+    <template x-if="selectedFile">
+        <div class="mt-2 flex items-center gap-2 bg-white/10 p-2 rounded-lg w-fit border border-white/10">
+            <span class="text-[10px] text-gray-300" x-text="selectedFile.name"></span>
+            <button @click="selectedFile = null" class="text-red-500 px-1">✕</button>
+        </div>
+    </template>
+    
+    <p class="text-[10px] text-center text-gray-600 mt-3 font-light tracking-wide uppercase">
+        Будьте внимательны, Вы ведёте диалог с искусственным интеллектом, он может допускать ошибки
+    </p>
+</div>
+    </main>
+    <script src="scripts/script_employee.js"></script>
+</body>
+
+</html>

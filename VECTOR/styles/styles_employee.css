@@ -1,0 +1,82 @@
+:root {
+    --bg-main: #0D0D0D;
+    --bg-card: #151515;
+    --bg-hover: #1F1F1F;
+    --accent: #FF7A00;
+    --border: #2A2A2A;
+    --text-secondary: #B3B3B3;
+    --text-muted: #6B6B6B;
+}
+
+body {
+    margin: 0;
+    background: var(--bg-main);
+    font-family: 'Sora', sans-serif;
+    /* Убираем жесткий overflow, чтобы работал мобильный скролл */
+    overflow-x: hidden; 
+}
+
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+
+/* Настройки скроллбара для внутренних блоков */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #2A2A2A;
+    border-radius: 10px;
+}
+
+.task-item {
+    display: flex;
+    gap: 10px;
+    padding: 12px;
+    cursor: pointer;
+    transition: 0.2s;
+    border-bottom: 1px solid rgba(255,255,255,0.02);
+}
+
+.task-item:hover {
+    background: var(--bg-hover);
+}
+
+.dot { color: var(--accent); }
+.muted { color: var(--text-muted); font-size: 12px; }
+.secondary { color: var(--text-secondary); font-size: 12px; }
+.chat-pill {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    border-radius: 99px;
+    text-align: left;
+    color: var(--text-secondary);
+    transition: 0.2s;
+    width: 100%;
+}
+
+.chat-pill:hover {
+    background: var(--bg-hover);
+    color: white;
+}
+
+#calendar-grid span {
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#calendar-grid span:hover {
+    background: var(--bg-hover);
+}
+.nav-item {
+    transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    cursor: pointer;
+}

@@ -35,11 +35,10 @@
             <div class="flex gap-4 max-w-[80%]">
                 <div class="shrink-0 flex">
                     <img src="images/ВЕКТОР.svg" class="w-8 h-8 md:w-10 md:h-10">
-                    <div class="w-2 h-2 bg-[#00FF66] rounded-full mt-9 border border-black"></div>
                 </div>
                 <div class="space-y-2">
                     <h3 class="font-bold text-lg uppercase">ВЕКТОР</h3>
-                    <p class="text-sm md:text-base text-gray-300 ">
+                    <p class="text-sm md:text-base text-gray-300">
                         Здравствуйте, Имя! Большое спасибо за Ваше обращение в Техническую поддержку. Вам ответит первый
                         освободившийся оператор как можно скорее. Большое спасибо за Ваше ожидание.
                     </p>
@@ -51,14 +50,14 @@
             <template x-for="msg in messages" :key="msg.id">
                 <div :class="msg.role === 'user' ? 'flex justify-end' : 'flex gap-4 max-w-[80%]'">
                     <template x-if="msg.role === 'bot'">
-                        <div class="shrink-0"><img src="images/ВЕКТОР.svg" class="w-8 h-8"></div>
+                        <img src="images/ВЕКТОР.svg" class="w-8 h-8 md:w-10 md:h-10">
                     </template>
                     <div
                         :class="msg.role === 'user' ? 'bg-[#1F1F1F] border border-white/10 p-3 px-5 rounded-2xl' : 'space-y-1'">
                         <template x-if="msg.role === 'bot'">
-                            <h3 class="font-bold text-xs uppercase text-gray-400">ВЕКТОР</h3>
+                            <h3 class="font-bold text-lg uppercase">ВЕКТОР</h3>
                         </template>
-                        <p class="text-sm md:text-base" :class="msg.role === 'bot' ? 'text-gray-300' : 'text-white'"
+                        <p class="text-sm md:text-base text-gray-300" :class="msg.role === 'bot' ? 'text-gray-300' : 'text-white'"
                             x-text="msg.text"></p>
                     </div>
                 </div>
@@ -81,7 +80,7 @@
         
         <input type="file" id="file-input" class="hidden" @change="handleFileSelect($event)">
 
-        <button type="button" @click="triggerFileSelect()" class="p-2 text-gray-500 hover:text-white transition-colors">
+        <button type="button" @click="triggerFileSelect()" class="p-2 text-[#6B6B6B] hover:text-[#FF9A3C] active:text-[#FF7A00] transition-colors">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
             </svg>
@@ -92,10 +91,10 @@
             x-model="userInput"
             @keyup.enter="sendMessage()"
             placeholder="Спросите о чем-нибудь..." 
-            class="flex-1 bg-transparent border-none outline-none text-sm px-2 text-white placeholder:text-gray-600"
+            class="flex-1 bg-transparent border-none outline-none text-sm px-2 text-white placeholder:text-[#6B6B6B]"
         >
 
-        <button @click="sendMessage()" class="p-2 text-[#FF7A00] hover:text-[#FF9A3C] transition-colors">
+        <button @click="sendMessage()" class="p-2  hover:text-[#FF9A3C] active:text-[#CC6200] transition-colors">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
             </svg>
@@ -109,7 +108,7 @@
         </div>
     </template>
     
-    <p class="text-[10px] text-center text-gray-600 mt-3 font-light tracking-wide uppercase">
+    <p class="text-[12px] text-center text-[#6B6B6B] mt-3 font-light">
         Будьте внимательны, Вы ведёте диалог с искусственным интеллектом, он может допускать ошибки
     </p>
 </div>
@@ -117,4 +116,3 @@
     <script src="scripts/script_employee.js"></script>
 </body>
 
-</html>

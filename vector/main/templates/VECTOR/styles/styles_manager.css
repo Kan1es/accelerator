@@ -1,0 +1,208 @@
+:root {
+    --bg-main: #0D0D0D;
+    --bg-card: #151515;
+    --bg-hover: #1F1F1F;
+    --accent: #FF7A00;
+    --border: #2A2A2A;
+    --text-secondary: #B3B3B3;
+    --text-muted: #6B6B6B;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Sora', sans-serif;
+    background: var(--bg-main);
+    color: #fff;
+}
+
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #2A2A2A;
+    border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #FF7A00;
+}
+
+.nav-item {
+    transition: color 0.2s;
+}
+
+.badge-working {
+    background: rgba(245, 158, 11, 0.12);
+    color: #F59E0B;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    border-radius: 20px;
+    font-size: 11px;
+    padding: 2px 10px;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.badge-waiting {
+    background: rgba(107, 107, 107, 0.12);
+    color: #B3B3B3;
+    border: 1px solid rgba(107, 107, 107, 0.25);
+    border-radius: 20px;
+    font-size: 11px;
+    padding: 2px 10px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.employee-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    transition: background 0.15s;
+}
+
+.employee-row:hover {
+    background: var(--bg-hover);
+}
+
+.employee-row:last-child {
+    border-bottom: none;
+}
+
+.avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #1F1F1F;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.task-card {
+    background: #111111;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 5px;
+    padding: 16px 20px;
+    transition: border-color 0.2s;
+}
+
+.task-card:hover {
+    border-color: rgba(255, 122, 0, 0.3);
+}
+
+.notif-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.notif-row:hover {
+    background: var(--bg-hover);
+}
+
+.notif-row:last-child {
+    border-bottom: none;
+}
+
+.add-task-bar {
+    background: #111111;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    transition: border-color 0.2s;
+}
+
+.add-task-bar:focus-within {
+    border-color: rgba(255, 122, 0, 0.4);
+}
+
+.progress-bar-outer {
+    width: 100%;
+    height: 5px;
+    background: #1F1F1F;
+    border-radius: 99px;
+    margin: 6px 0;
+}
+
+.progress-bar-inner {
+    height: 100%;
+    background: #FF7A00;
+    border-radius: 99px;
+    box-shadow: 0 0 8px rgba(255, 122, 0, 0.4);
+}
+
+.modal-input {
+    width: 100%;
+    background: #111111;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: #fff;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-family: 'Sora', sans-serif;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.modal-input:focus {
+    border-color: rgba(255, 122, 0, 0.5);
+}
+
+.modal-input::placeholder {
+    color: var(--text-muted);
+}
+
+.modal-input option {
+    background: #151515;
+}
+
+.toast {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 200;
+    background: #151515;
+    border: 1px solid rgba(255, 122, 0, 0.4);
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+.toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}

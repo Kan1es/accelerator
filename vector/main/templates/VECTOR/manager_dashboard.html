@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ВЕКТОР — Менеджер</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/styles_manager.css">
+</head>
+
+<body class="bg-[#0D0D0D] text-white font-sora h-screen flex flex-col overflow-x-hidden">
+
+    <header class="p-3 md:px-10 flex flex-col md:flex-row justify-between items-center gap-6 z-50 relative shrink-0">
+        <div class="flex items-center gap-4">
+            <a href="index.html" class="flex items-center gap-6"><img src="images/ВЕКТОР.svg"
+                    class="w-14 h-14 md:w-14 md:h-14" alt="Logo">
+                <span class="text-2xl md:text-5xl font-semibold tracking-tighter uppercase">ВЕКТОР</span>
+            </a>
+        </div>
+        <nav class="flex flex-wrap justify-center gap-4 md:gap-12 items-center">
+            <a href="manager_dashboard.html" class="nav-item text-m md:text-xl font-light text-[#CC6200]">Главная</a>
+            <a href="manager_workers.html"
+                class="nav-item text-m md:text-xl opacity-100 font-light hover:text-[#FF9A3C] active:text-[#CC6200]">Работники</a>
+            <a href="manager_tasks.html"
+                class="nav-item text-m md:text-xl opacity-100 font-light hover:text-[#FF9A3C] active:text-[#CC6200]">Все
+                задачи</a>
+            <a href="manager_support.html"
+                class="nav-item text-m md:text-xl opacity-100 font-light hover:text-[#FF9A3C] active:text-[#CC6200]">Техническая
+                поддержка</a>
+        </nav>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 px-4 md:px-10 pb-6 lg:flex-1 lg:min-h-0">
+
+        <div class="lg:col-span-3 flex flex-col gap-4 min-h-0 order-2 lg:order-1 h-auto lg:h-full">
+
+            <div class="card p-4 shrink-0">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="avatar w-12 h-12 text-xs">ФОТО</div>
+                    <div>
+                        <p class="font-medium text-sm">Имя Фамилия</p>
+                        <p class="text-[11px] text-[#6B6B6B]">Должность</p>
+                    </div>
+                </div>
+                <p class="text-[10px] text-[#6B6B6B] mb-1">Общая шкала всех выполненных задач</p>
+                <div class="progress-bar-outer">
+                    <div class="progress-bar-inner" style="width: 74%"></div>
+                </div>
+                <div class="flex justify-between text-[10px] text-[#6B6B6B] mt-1">
+                    <span>0</span>
+                    <span class="text-white font-medium">74%</span>
+                    <span>100</span>
+                </div>
+            </div>
+
+
+            <div class="card flex flex-col overflow-hidden min-h-[200px] lg:flex-1">
+                <div class="px-3 py-2.5 border-b border-[#2A2A2A] shrink-0">
+                    <p class="text-xs text-center text-[#B3B3B3]">Статусы работников</p>
+                </div>
+                <div class="flex-1 overflow-y-auto custom-scrollbar">
+                    <div class="employee-row">
+                        <div class="avatar">ФОТ</div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-medium truncate">Имя Фамилия</p>
+                            <p class="text-[10px] text-[#6B6B6B]">Задача №1</p>
+                        </div>
+                        <span class="badge-working"><span
+                                class="w-1.5 h-1.5 rounded-full bg-[#F59E0B] inline-block shrink-0"></span>В
+                            работе</span>
+                    </div>
+                    <div class="employee-row">
+                        <div class="avatar">ФОТ</div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-medium truncate">Имя Фамилия</p>
+                            <p class="text-[10px] text-[#6B6B6B]">Задача №2</p>
+                        </div>
+                        <span class="badge-working"><span
+                                class="w-1.5 h-1.5 rounded-full bg-[#F59E0B] inline-block shrink-0"></span>В
+                            работе</span>
+                    </div>
+                    <div class="employee-row">
+                        <div class="avatar">ФОТ</div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-medium truncate">Имя Фамилия</p>
+                            <p class="text-[10px] text-[#6B6B6B]">Задача №3</p>
+                        </div>
+                        <span class="badge-working"><span
+                                class="w-1.5 h-1.5 rounded-full bg-[#F59E0B] inline-block shrink-0"></span>В
+                            работе</span>
+                    </div>
+                    <div class="employee-row">
+                        <div class="avatar">ФОТ</div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-medium truncate">Имя Фамилия</p>
+                            <p class="text-[10px] text-[#6B6B6B]">Задача №4</p>
+                        </div>
+                        <span class="badge-waiting">Ожидает</span>
+                    </div>
+                    <div class="employee-row">
+                        <div class="avatar">ФОТ</div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-medium truncate">Имя Фамилия</p>
+                            <p class="text-[10px] text-[#6B6B6B]">Задача №5</p>
+                        </div>
+                        <span class="badge-working"><span
+                                class="w-1.5 h-1.5 rounded-full bg-[#F59E0B] inline-block shrink-0"></span>В
+                            работе</span>
+                    </div>
+                    <div class="employee-row">
+                        <div class="avatar">ФОТ</div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-medium truncate">Имя Фамилия</p>
+                            <p class="text-[10px] text-[#6B6B6B]">Задача №6</p>
+                        </div>
+                        <span class="badge-working"><span
+                                class="w-1.5 h-1.5 rounded-full bg-[#F59E0B] inline-block shrink-0"></span>В
+                            работе</span>
+                    </div>
+                    <div class="employee-row">
+                        <div class="avatar">ФОТ</div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-medium truncate">Имя Фамилия</p>
+                            <p class="text-[10px] text-[#6B6B6B]">Задача №7</p>
+                        </div>
+                        <span class="badge-waiting">Ожидает</span>
+                    </div>
+                    <div class="employee-row">
+                        <div class="avatar">ФОТ</div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-medium truncate">Имя Фамилия</p>
+                            <p class="text-[10px] text-[#6B6B6B]">Задача №8</p>
+                        </div>
+                        <span class="badge-working"><span
+                                class="w-1.5 h-1.5 rounded-full bg-[#F59E0B] inline-block shrink-0"></span>В
+                            работе</span>
+                    </div>
+                    <div class="employee-row">
+                        <div class="avatar">ФОТ</div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-medium truncate">Имя Фамилия</p>
+                            <p class="text-[10px] text-[#6B6B6B]">Задача №9</p>
+                        </div>
+                        <span class="badge-working"><span
+                                class="w-1.5 h-1.5 rounded-full bg-[#F59E0B] inline-block shrink-0"></span>В
+                            работе</span>
+                    </div>
+                    <div class="employee-row">
+                        <div class="avatar">ФОТ</div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-medium truncate">Имя Фамилия</p>
+                            <p class="text-[10px] text-[#6B6B6B]">Задача №10</p>
+                        </div>
+                        <span class="badge-working"><span
+                                class="w-1.5 h-1.5 rounded-full bg-[#F59E0B] inline-block shrink-0"></span>В
+                            работе</span>
+                    </div>
+                    <div class="employee-row">
+                        <div class="avatar">ФОТ</div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-medium truncate">Имя Фамилия</p>
+                            <p class="text-[10px] text-[#6B6B6B]">Задача №11</p>
+                        </div>
+                        <span class="badge-working"><span
+                                class="w-1.5 h-1.5 rounded-full bg-[#F59E0B] inline-block shrink-0"></span>В
+                            работе</span>
+                    </div>
+                </div>
+                <div class="px-3 py-2.5 border-t border-[#2A2A2A] shrink-0">
+                    <button class="text-xs text-[#6B6B6B] hover:text-[#FF7A00] w-full text-center transition-colors">
+                        Просмотреть всех работников
+                    </button>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="lg:col-span-6 flex flex-col gap-4 min-h-0 order-1 lg:order-2 h-auto lg:h-full">
+
+            <div class="add-task-bar shrink-0 mb-11">
+                <span id="open-task-modal" class="flex flex-1">
+                    <input type="text" placeholder="Добавьте новую задачу"
+                        class="flex-1 bg-transparent outline-none text-sm text-white placeholder:text-[#6B6B6B]"
+                        readonly>
+                    <button
+                        class="w-7 h-7 bg-[#FFF] rounded-md flex items-center justify-center hover:bg-[#FF9A3C] active:bg-[#FF7A00] transition-colors shrink-0">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                    </button>
+                </span>
+
+            </div>
+
+            <div class="overflow-y-auto custom-scrollbar space-y-3 pr-1 lg:flex-1">
+                <h2 class="text-xl font-medium sticky top-0 bg-[#0D0D0D] pt-2 z-10">Задачи в работе</h2>
+
+                <div class="task-card">
+                    <div class="flex justify-between items-start gap-4">
+                        <div>
+                            <h3 class="font-semibold text-base tracking-tight">Задача №153</h3>
+                            <p class="text-xs text-[#6B6B6B] mt-0.5">Проверка телефонной связи</p>
+                            <p class="text-xs text-[#B3B3B3] mt-1">Выполняет: Имя Фамилия</p>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <p class="text-[10px] text-[#6B6B6B]">До конца срока выполнения:</p>
+                            <p class="task-timer text-lg font-semibold text-[#EF4444] tracking-widest" data-time="02:34:55">02:34:55</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="task-card">
+                    <div class="flex justify-between items-start gap-4">
+                        <div>
+                            <h3 class="font-semibold text-base tracking-tight">Задача №153</h3>
+                            <p class="text-xs text-[#6B6B6B] mt-0.5">Проверка телефонной связи</p>
+                            <p class="text-xs text-[#B3B3B3] mt-1">Выполняет: Имя Фамилия</p>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <p class="text-[10px] text-[#6B6B6B]">До конца срока выполнения:</p>
+                            <p class="task-timer text-lg font-semibold text-[#EF4444] tracking-widest" data-time="02:34:55">02:34:55</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="task-card">
+                    <div class="flex justify-between items-start gap-4">
+                        <div>
+                            <h3 class="font-semibold text-base tracking-tight">Задача №153</h3>
+                            <p class="text-xs text-[#6B6B6B] mt-0.5">Проверка телефонной связи</p>
+                            <p class="text-xs text-[#B3B3B3] mt-1">Выполняет: Имя Фамилия</p>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <p class="text-[10px] text-[#6B6B6B]">До конца срока выполнения:</p>
+                            <p class="task-timer text-lg font-semibold text-[#EF4444] tracking-widest" data-time="02:34:55">02:34:55</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="task-card">
+                    <div class="flex justify-between items-start gap-4">
+                        <div>
+                            <h3 class="font-semibold text-base tracking-tight">Задача №153</h3>
+                            <p class="text-xs text-[#6B6B6B] mt-0.5">Проверка телефонной связи</p>
+                            <p class="text-xs text-[#B3B3B3] mt-1">Выполняет: Имя Фамилия</p>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <p class="text-[10px] text-[#6B6B6B]">До конца срока выполнения:</p>
+                            <p class="task-timer text-lg font-semibold text-[#EF4444] tracking-widest" data-time="02:34:55">02:34:55</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="task-card">
+                    <div class="flex justify-between items-start gap-4">
+                        <div>
+                            <h3 class="font-semibold text-base tracking-tight">Задача №153</h3>
+                            <p class="text-xs text-[#6B6B6B] mt-0.5">Проверка телефонной связи</p>
+                            <p class="text-xs text-[#B3B3B3] mt-1">Выполняет: Имя Фамилия</p>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <p class="text-[10px] text-[#6B6B6B]">До конца срока выполнения:</p>
+                            <p class="task-timer text-lg font-semibold text-[#EF4444] tracking-widest" data-time="02:34:55">02:34:55</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="task-card">
+                    <div class="flex justify-between items-start gap-4">
+                        <div>
+                            <h3 class="font-semibold text-base tracking-tight">Задача №153</h3>
+                            <p class="text-xs text-[#6B6B6B] mt-0.5">Проверка телефонной связи</p>
+                            <p class="text-xs text-[#B3B3B3] mt-1">Выполняет: Имя Фамилия</p>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <p class="text-[10px] text-[#6B6B6B]">До конца срока выполнения:</p>
+                            <p class="task-timer text-lg font-semibold text-[#EF4444] tracking-widest" data-time="02:34:55">02:34:55</p>
+                        </div>
+                    </div>
+                </div>
+
+
+            </div>
+            <div class="flex justify-center gap-2 py-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#2A2A2A]"></span>
+                <span class="w-1.5 h-1.5 rounded-full bg-[#2A2A2A]"></span>
+                <span class="w-1.5 h-1.5 rounded-full bg-[#2A2A2A]"></span>
+            </div>
+        </div>
+
+
+        <!-- RIGHT: Notifications -->
+        <div class="lg:col-span-3 flex flex-col min-h-0 order-3 h-auto lg:h-full ">
+            <div class="card flex flex-col overflow-hidden min-h-[200px] lg:flex-1 ">
+                <div class="flex-1 overflow-y-auto custom-scrollbar ">
+                    
+                    <div class="notif-row flex">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B" stroke-width="3"
+                            class="shrink-0 mt-0.5">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs text-white leading-snug">Задача №153 была принята отделом (отдел)</p>
+                        </div>
+                        <span class="text-[10px] text-[#6B6B6B] shrink-0 ml-1">11:05</span>
+                    </div>
+
+                    <div class="notif-row bg-[#FF7A00]/5 border-y border-[#FF7A00]">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#FF7A00" stroke-width="3"
+                            class="shrink-0 mt-0.5">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs text-[#FF7A00] leading-snug font-medium">Задача №168 не была обработана
+                                отделом (отдел) в течение 15 минут</p>
+                        </div>
+                        <span class="text-[10px] text-[#6B6B6B] shrink-0 ml-1">11:13</span>
+                    </div>
+
+                    <div class="notif-row bg-[#EF4444]/5 border-y border-[#EF4444]">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="3"
+                            class="shrink-0 mt-0.5">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs text-[#EF4444] leading-snug font-medium">Задача №168 была повторно
+                                отправлена отделу (отдел). Ожидание ответа ещё 5 минут</p>
+                        </div>
+                        <span class="text-[10px] text-[#6B6B6B] shrink-0 ml-1">11:16</span>
+                    </div>
+
+                    <div class="notif-row">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B" stroke-width="3"
+                            class="shrink-0 mt-0.5">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs text-[#B3B3B3] leading-snug">Работник Фамилия Имя перевел задачу Задача в
+                                статус: В работе</p>
+                        </div>
+                        <span class="text-[10px] text-[#6B6B6B] shrink-0 ml-1">11:23</span>
+                    </div>
+
+                    <div class="notif-row bg-[#22C55E]/5 border-y border-[#22C55E]">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="3"
+                            class="shrink-0 mt-0.5">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs text-[#22C55E] leading-snug font-medium">Задача №16 была выполнена отделом
+                                (Отдел)</p>
+                        </div>
+                        <span class="text-[10px] text-[#6B6B6B] shrink-0 ml-1">11:32</span>
+                    </div>
+
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                    <div class="notif-row"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6B6B6B"
+                            stroke-width="3" class="shrink-0">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                        <p class="flex-1 text-xs text-[#6B6B6B]">Пример уведомления</p><span
+                            class="text-[10px] text-[#6B6B6B] ml-1">ЧЧ:ММ</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="task-toast"
+        class="fixed top-6 left-1/2 -translate-x-1/2 translate-y-[-20px] opacity-0 pointer-events-none z-[100] 
+           bg-[#151515] border border-[#FF7A00]/40 text-white px-5 py-3 rounded-[8px] shadow-lg transition-all duration-300">
+        Задача успешно отправлена
+    </div>
+
+    <div id="task-modal"
+        class="fixed inset-0 bg-black/70 backdrop-blur-[2px] z-[90] hidden items-center justify-center p-4">
+        <div class="w-full max-w-2xl bg-[#151515] border border-white/10 rounded-[8px] p-6 md:p-8 relative">
+
+            <button id="close-task-modal"
+                class="absolute top-4 right-4 text-[#6B6B6B] hover:text-[#FF7A00] text-2xl leading-none">
+                &times;
+            </button>
+
+            <h2 class="text-2xl font-[500] mb-6">Новая задача</h2>
+
+            <form id="task-form" class="space-y-5">
+                <div>
+                    <label class="block text-sm text-[#B3B3B3] mb-2">Название задачи</label>
+                    <input type="text" name="title" required class="modal-input"
+                        placeholder="Например: Проверка оборудования">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-[#B3B3B3] mb-2">Срок сдачи — дата</label>
+                        <input type="date" name="date" required class="modal-input">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm text-[#B3B3B3] mb-2">Время</label>
+                        <input type="time" name="time" required class="modal-input">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-[#B3B3B3] mb-2">Важность</label>
+                        <select name="priority" required class="modal-input">
+                            <option value="" class="text-[#B3B3B3]">Выберите важность</option>
+                            <option value="low">Низкая</option>
+                            <option value="high">Высокая</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm text-[#B3B3B3] mb-2">Ваш отдел</label>
+                        <select name="department" required class="modal-input">
+                            <option value="" class="text-[#B3B3B3]">Выберите отдел</option>
+                            <option value="Manager dep">Менеджерская</option>
+                            <option value="Office 2">Офис 2</option>
+                            <option value="IT dept">IT отдел</option>
+                            <option value="Dept 2">Отдел 2</option>
+                            <option value="Electricity Dept">Электрощитовая</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm text-[#B3B3B3] mb-2">Комментарий</label>
+                    <textarea name="comment" rows="4" class="modal-input resize-none"
+                        placeholder="Опишите задачу подробнее: что нужно сделать, особенности, дедлайн, приоритетные детали"></textarea>
+                </div>
+
+                <div class="pt-2 flex justify-end">
+                    <button type="submit"
+                        class="px-5 py-3 bg-[#FF7A00] text-white rounded-[5px] hover:bg-[#e56f00] transition-colors font-[500]">
+                        Добавить задачу
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="scripts/script_manager.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ВЕКТОР — Работники</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script defer src="https://unpkg.com/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="styles/styles_manager.css">
+</head>
+
+<body class="bg-[#0D0D0D] text-white h-screen flex flex-col overflow-x-hidden">
+    <header class="p-3 md:px-10 flex flex-col md:flex-row justify-between items-center gap-6 z-50 relative shrink-0">
+        <div class="flex items-center gap-4">
+            <a href="manager_dashboard.html" class="flex items-center gap-6">
+                <img src="images/ВЕКТОР.svg" class="w-14 h-14" alt="Logo">
+                <span class="text-2xl md:text-5xl font-semibold tracking-tighter uppercase">ВЕКТОР</span>
+            </a>
+        </div>
+        <nav class="flex flex-wrap justify-center gap-4 md:gap-12 items-center">
+            <a href="manager_workers.html" class="nav-item text-m md:text-xl font-light text-[#CC6200]">Работники</a>
+            <a href="manager_dashboard.html"
+                class="nav-item text-m md:text-xl font-light hover:text-[#FF9A3C]">Главная</a>
+            <a href="manager_tasks.html" class="nav-item text-m md:text-xl font-light hover:text-[#FF9A3C]">Все
+                задачи</a>
+            <a href="manager_support.html"
+                class="nav-item text-m md:text-xl font-light hover:text-[#FF9A3C]">Техническая поддержка</a>
+        </nav>
+    </header>
+
+    <div class="flex-1 overflow-y-auto custom-scrollbar px-4 md:px-10 pb-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4" id="workers-grid">
+        </div>
+    </div>
+
+    <div id="profile-panel">
+        <div
+            class="min-h-full lg:h-full grid grid-cols-1 lg:grid-cols-12 gap-4 px-4 md:px-10 pb-6 overflow-y-auto lg:overflow-hidden custom-scrollbar">
+
+            <div class="lg:col-span-3 flex flex-col gap-4 min-h-0 h-auto lg:h-full pt-4">
+
+                <div class="card p-4 shrink-0">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="avatar-lg" id="p-avatar">ФОТО</div>
+                        <div>
+                            <p class="font-semibold text-base" id="p-name">—</p>
+                            <p class="text-[11px] text-[#6B6B6B]" id="p-role">—</p>
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-[#6B6B6B] mb-1">Общая шкала выполненных задач</p>
+                    <div class="progress-bar-outer">
+                        <div class="progress-bar-inner" id="p-progress" style="width: 65%"></div>
+                    </div>
+                    <div class="flex justify-between text-[10px] text-[#6B6B6B] mt-1">
+                        <span>0</span>
+                        <span class="text-white font-medium" id="p-percent">65%</span>
+                        <span>100</span>
+                    </div>
+                </div>
+
+                <div x-data="{ open: true }"
+                    class="card flex flex-col overflow-hidden transition-all duration-500 bg-[#151515] min-h-[72px]"
+                    :class="open ? 'lg:flex-[6]' : 'flex-none'">
+
+                    <div @click="open = !open"
+                        class="p-3 flex justify-between items-center border-b border-[#2A2A2A] bg-[#151515] shrink-0 cursor-pointer">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <img src="images/ВЕКТОР.svg" class="w-6 shrink-0">
+                            <div class="min-w-0">
+                                <p class="text-xs uppercase font-[600] truncate">ВЕКТОР</p>
+                                <span class="flex items-center gap-1 text-[10px] text-[#22C55E]">
+                                    <span class="w-1.5 h-1.5 bg-[#22C55E] rounded-full shrink-0"></span>
+                                    В сети
+                                </span>
+                            </div>
+                        </div>
+
+                        <button type="button" class="text-[#6B6B6B] transition-transform duration-500 shrink-0"
+                            :class="!open && 'rotate-180'">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="3">
+                                <path d="M6 9l6 6 6-6" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div x-show="open" x-collapse.duration.500ms class="flex flex-col flex-1 min-h-0 overflow-hidden">
+
+                        <div class="p-3 flex flex-col gap-2 overflow-y-auto custom-scrollbar min-h-0">
+                            <button class="chat-pill text-sm"
+                                onclick="setChatQuery('Отправь быстрое сообщение работнику')">
+                                Отправь быстрое сообщение работнику
+                            </button>
+
+                            <button class="chat-pill text-sm" id="pill-task"
+                                onclick="setChatQuery('Какой срок выполнения задачи №153?')">
+                                Какой срок выполнения задачи №153?
+                            </button>
+
+                            <button class="chat-pill text-sm" onclick="openAssignModal()">
+                                Назначить работнику новое задание
+                            </button>
+                        </div>
+
+                        <div class="mt-auto p-3 border-t border-[#2A2A2A] bg-[#111111] shrink-0">
+                            <div
+                                class="flex items-center gap-2 bg-black/40 p-2 px-3 rounded-xl border border-white/5 min-w-0">
+                                <input id="chat-input"
+                                    class="bg-transparent outline-none text-sm flex-1 min-w-0 text-white placeholder:text-[#6B6B6B]"
+                                    type="text" placeholder="Задайте вопрос...">
+
+                                <button type="button" class="text-[#FF7A00] shrink-0" onclick="sendChat()">➤</button>
+                            </div>
+
+                            <p class="text-[9px] text-center text-[#6B6B6B] mt-2 leading-snug">
+                                Будьте внимательны, вы ведёте диалог с ИИ
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+
+            </div>
+
+            <div class="lg:col-span-6 flex flex-col gap-3 min-h-0 h-auto lg:h-full pt-4 overflow-hidden">
+
+                <div class="flex justify-end shrink-0">
+                    <button onclick="closeProfile()"
+                        class="flex items-center gap-2 text-sm text-[#B3B3B3] hover:text-[#FF7A00] transition-colors">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M19 12H5M12 5l-7 7 7 7" />
+                        </svg>
+                        Вернуться
+                    </button>
+                </div>
+                <h2 class="text-lg font-medium shrink-0 pt-1">Активные задачи сотрудника</h2>
+                <div class="card p-4 flex flex-col gap-3 flex-1 overflow-y-auto">
+                    
+                    <div class="space-y-2 shrink-0" id="p-active-tasks"></div>
+                </div>
+                <h2 class="text-lg font-medium shrink-0 pt-1">Предстоящие задачи сотрудника</h2>
+                <div class="card p-4 flex flex-col gap-3 min-h-0 flex-1 overflow-y-auto">
+                    
+
+                    <div class="flex-1  custom-scrollbar space-y-3 pr-1" id="p-upcoming-tasks">
+                    </div>
+                </div>
+                
+
+            </div>
+
+            <div class="lg:col-span-3 flex flex-col min-h-0 h-auto lg:h-full pt-4 overflow-hidden">
+                <div class="card flex flex-col overflow-hidden min-h-[200px] lg:flex-1">
+                    <div class="px-4 py-2.5 border-b border-[#2A2A2A] shrink-0">
+                        <p class="text-xs text-center text-[#B3B3B3]">Завершённые задачи сотрудника</p>
+                    </div>
+                    <div class="flex-1 overflow-y-auto custom-scrollbar px-3 pb-2" id="p-done-tasks"></div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
+    <div id="task-toast"
+        class="fixed top-6 left-1/2 -translate-x-1/2 translate-y-[-20px] opacity-0 pointer-events-none z-[100] 
+           bg-[#151515] border border-[#FF7A00]/40 text-white px-5 py-3 rounded-[8px] shadow-lg transition-all duration-300">
+        Задача успешно отправлена
+    </div>
+
+    <div id="task-modal"
+        class="fixed inset-0 bg-black/70 backdrop-blur-[2px] z-[90] hidden items-center justify-center p-4">
+        <div class="w-full max-w-2xl bg-[#151515] border border-white/10 rounded-[8px] p-6 md:p-8 relative">
+
+            <button id="close-task-modal"
+                class="absolute top-4 right-4 text-[#6B6B6B] hover:text-[#FF7A00] text-2xl leading-none">
+                &times;
+            </button>
+
+            <h2 class="text-2xl font-[500] mb-6">Новая задача</h2>
+
+            <form id="task-form" class="space-y-5">
+                <div>
+                    <label class="block text-sm text-[#B3B3B3] mb-2">Название задачи</label>
+                    <input type="text" name="title" required class="modal-input"
+                        placeholder="Например: Проверка оборудования">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-[#B3B3B3] mb-2">Срок сдачи — дата</label>
+                        <input type="date" name="date" required class="modal-input">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm text-[#B3B3B3] mb-2">Время</label>
+                        <input type="time" name="time" required class="modal-input">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-[#B3B3B3] mb-2">Важность</label>
+                        <select name="priority" required class="modal-input">
+                            <option value="" class="text-[#B3B3B3]">Выберите важность</option>
+                            <option value="low">Низкая</option>
+                            <option value="high">Высокая</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm text-[#B3B3B3] mb-2">Ваш отдел</label>
+                        <select name="department" required class="modal-input">
+                            <option value="" class="text-[#B3B3B3]">Выберите отдел</option>
+                            <option value="Manager dep">Менеджерская</option>
+                            <option value="Office 2">Офис 2</option>
+                            <option value="IT dept">IT отдел</option>
+                            <option value="Dept 2">Отдел 2</option>
+                            <option value="Electricity Dept">Электрощитовая</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm text-[#B3B3B3] mb-2">Комментарий</label>
+                    <textarea name="comment" rows="4" class="modal-input resize-none"
+                        placeholder="Опишите задачу подробнее: что нужно сделать, особенности, дедлайн, приоритетные детали"></textarea>
+                </div>
+
+                <div class="pt-2 flex justify-end">
+                    <button type="submit"
+                        class="px-5 py-3 bg-[#FF7A00] text-white rounded-[5px] hover:bg-[#e56f00] transition-colors font-[500]">
+                        Добавить задачу
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="scripts/script_manager.js"></script>
+</body>
+
+</html>

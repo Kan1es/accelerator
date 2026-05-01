@@ -19,6 +19,8 @@ class Employee(models.Model):
     role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True)
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
     is_active = models.BooleanField(default=True)
+    is_busy = models.BooleanField(default=False)
+    # current_task = ?
 
     def __str__(self):
         return self.name
@@ -67,3 +69,11 @@ class TicketAssignment(models.Model):
 
     def __str__(self):
         return f"Assignment {self.id} for Ticket {self.ticket_id}"
+
+class TaskQueue(models.Model):
+    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE)
+    # department =
+    # priority =
+    # wait_start_time =
+    assigned_time = models.DateTimeField()
+    is_activated = models.BooleanField(default=True)

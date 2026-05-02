@@ -25,6 +25,13 @@ class Employee(models.Model):
     def __str__(self):
         return self.name
 
+class WorkShift(models.Model):
+    employee = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, blank=True)
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
+    total_seconds = models.IntegerField()
+    is_active = models.BooleanField(default=True)
+
 class Category(models.Model):
     name = models.CharField(max_length=255)
     keywords = models.TextField(blank=True, null=True)

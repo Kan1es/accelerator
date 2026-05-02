@@ -12,6 +12,10 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 
+import dotenv
+info = dotenv.dotenv_values(".env")
+from django.conf.global_settings import SECRET_KEY
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -20,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-&y%v)7&$u&-7+r2$*7eya660x*9lo%v)3e5rjz(e1%3n*i**d!'
+SECRET_KEY = info['SECRET_KEY']
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -31,6 +35,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'main',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -72,10 +77,15 @@ WSGI_APPLICATION = 'vector.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+info = dotenv.dotenv_values(".env")
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': info['DB'],
+        'USER': info['USER'],
+        'PASSWORD': info['PW'],
+        'HOST':info['HOST'],
+        'PORT': info['PORT'],
     }
 }
 

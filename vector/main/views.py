@@ -1,10 +1,12 @@
 from django.shortcuts import render
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
 from .models import Employee, WorkShift
+from .serializers import ShiftEndResponseSerializer, ErrorResponseSerializer, ShiftStartResponseSerializer
 
 
 # TODO сервис уведомлений
@@ -12,7 +14,15 @@ def notify_manager(employee):
     print(f"Уведомление менеджеру: сотрудник {employee.name} отработал менее 8 часов")
     pass
 
-
+@swagger_auto_schema(
+    method='post',
+    operation_description="Начать рабочую смену",
+    responses={
+        200: ShiftStartResponseSerializer(),
+        400: ErrorResponseSerializer()
+    },
+    tags=['Shifts']
+)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def shift_start(request):
@@ -36,7 +46,15 @@ def shift_start(request):
     return Response({'status': 'shift started', 'shift_start_time': now.isoformat()},
                     status=status.HTTP_200_OK)
 
-
+@swagger_auto_schema(
+    method='post',
+    operation_description="Завершить рабочую смену, вычислить отработанные секунды, при необходимости уведомить менеджера",
+    responses={
+        200: ShiftEndResponseSerializer(),
+        400: ErrorResponseSerializer()
+    },
+    tags=['Shifts']
+)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def shift_end(request):

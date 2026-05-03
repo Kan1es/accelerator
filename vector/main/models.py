@@ -62,6 +62,7 @@ class Ticket(models.Model):
     created_at = models.DateTimeField()
     creator = models.ForeignKey(Employee, related_name='created_tickets', on_delete=models.SET_NULL, null=True, blank=True)
     assignee = models.ForeignKey(Employee, related_name='assigned_tickets', on_delete=models.SET_NULL, null=True, blank=True)
+    deadline = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"Ticket {self.id} - {self.status}"

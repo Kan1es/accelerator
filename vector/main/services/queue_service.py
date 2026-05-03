@@ -1,6 +1,6 @@
-import datetime
+from datetime import datetime
 
-from accelerator.vector.main.models import TicketAssignment
+from ..models import TicketAssignment, Ticket, Employee
 
 # def push_to_queue(ticket, priority):
 
@@ -31,3 +31,15 @@ def assign_ticket_to_employee(ticket, employee):
         is_resolved = False
     )
     return assignment
+
+def auto_assign_from_queue():
+    #Добавить проверку на только что созданный ли тикет ил на освобожд сотруд
+    tickets = Ticket.objects.filter(status = 'open')
+    tickets.order_by('priority')
+
+    for ticket in tickets:
+        department = ticket.category.parent
+
+        free_employee = Employee.objects.filter(is_active = True, department = department, is_bust = False)
+        if free_employee.exists():
+            assign_ticket_to_employee(ticket, free_employee.first())

@@ -43,3 +43,12 @@ class EmployeeStatusSerializer(serializers.Serializer):
     is_on_shift = serializers.BooleanField(help_text="На смене (есть активная WorkShift)")
     is_busy = serializers.BooleanField(help_text="Занят (is_busy модели Employee)")
     remaining_shift_time = serializers.IntegerField(allow_null=True, help_text="Остаток рабочего времени до 8 часов")
+
+class ItemSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    tickets_today = serializers.IntegerField()
+    tickets_week = serializers.IntegerField()
+
+class AnaliticsResponseSerializer(serializers.Serializer):
+    group_by = serializers.CharField()
+    data = ItemSerializer()

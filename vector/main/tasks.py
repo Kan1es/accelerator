@@ -93,8 +93,10 @@ def cleanup_end_of_day():
     Employee.objects.all().update(total_work_today = 0)
 
 def remind_last_employee():
-    departments = Department.object.all()
+    departments = Department.objects.all()
     for department in departments:
-        active_employee = department.object.filter(is_on_shift = True, is_busy = True)
+        active_employee = department.objects.filter(is_on_shift = True, is_busy = True)
         if active_employee.count == 1:
             message = 'Ты последний активный, не забудь завершить задачи и выключить смену'
+
+            #Аналогично, куда выводить сообщение?

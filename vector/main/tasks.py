@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from .models import TaskQueue, EscalationRule, Ticket, Employee
+from .models import TaskQueue, EscalationRule, Ticket, Employee, Department
 
 GLOBAL_LIMIT = 3600
 # потом подумать над глобальным максимум
@@ -45,7 +45,6 @@ def check_timeouts():
     for ticket in tickets_in_progress:
 
         deadline = ticket.deadline
-        # Висит задача на доске, добавить deadline и вычислить его
         if deadline:
             if datetime.now() > deadline:
                 new_ticket = Ticket(
@@ -92,3 +91,10 @@ def cleanup_end_of_day():
         ticket.delete()
 
     Employee.objects.all().update(total_work_today = 0)
+
+def remind_last_employee():
+    departments = Department.object.all()
+    for department in departments:
+        active_employee = department.object.filter(is_on_shift = True, is_busy = True)
+        if active_employee.count == 1:
+            message = 'Ты последний активный, не забудь завершить задачи и выключить смену'

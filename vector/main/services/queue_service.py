@@ -1,9 +1,22 @@
 from datetime import datetime
 
-from ..models import TicketAssignment, Ticket, Employee
+from ..models import TicketAssignment, Ticket, Employee, TaskQueue
 
-# def push_to_queue(ticket, priority):
 
+def push_to_queue(ticket, priority):
+    department = ticket.creator.department.name
+    cur_time = datetime.now()
+
+    assig_time = TicketAssignment.objects.filter(ticket = ticket).get('assigned_time')
+    TaskQueue_new = TaskQueue.objects.create(
+        ticket = ticket,
+        department = department,
+        priority = priority,
+        wait_start_time = cur_time,
+        assigned_time = assig_time,
+        is_activated = True
+    )
+    return TaskQueue_new
 
 def assign_ticket_to_employee(ticket, employee):
     if not employee.is_active:
@@ -17,6 +30,8 @@ def assign_ticket_to_employee(ticket, employee):
 
     ticket.assignee = employee
     ticket.status = 'assigned'
+    assigner = ticket.creator
+    deadline = ticket.deadline
 
     employee.is_busy = True
     employee.current_task = ticket
@@ -24,16 +39,14 @@ def assign_ticket_to_employee(ticket, employee):
     assignment = TicketAssignment.objects.create(
         ticket = ticket,
         assignee = employee,
-        assigner = None,
-        # Кто будет правопреемником? строчка выше
+        assigner = assigner,
         assigned_time = datetime.now(),
-        # resolved_time = ?
+        resolved_time = deadline,
         is_resolved = False
     )
     return assignment
 
 def auto_assign_from_queue():
-    #Добавить проверку на только что созданный ли тикет ил на освобожд сотруд
     tickets = Ticket.objects.filter(status = 'open')
     tickets.order_by('priority')
 

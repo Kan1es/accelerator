@@ -52,3 +52,7 @@ class ItemSerializer(serializers.Serializer):
 class AnaliticsResponseSerializer(serializers.Serializer):
     group_by = serializers.CharField()
     data = ItemSerializer()
+
+class AvgResponseSerializer(serializers.Serializer):
+    department_name = serializers.CharField()
+    avg_response_time_seconds = serializers.FloatField()

@@ -6,8 +6,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
-from .models import Ticket, Employee, Department, TicketAssignment
-from .serializers import ErrorResponseSerializer, AnaliticsResponseSerializer, AvgResponseSerializer
+from .models import Ticket, Employee, Department, TicketAssignment, TaskQueue, EscalationRule
+from .serializers import ErrorResponseSerializer, AnaliticsResponseSerializer, AvgResponseSerializer, EscalationSerializer
 
 # @swagger_auto_schema(
 #     method='get',
@@ -101,6 +101,68 @@ def avg_time(request):
 
         serializer = AvgResponseSerializer(result, many = True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    except:
+    except ErrorResponseSerializer:
         return Response({'error': 'Ошибка при вычислении времени отклика'},
                         status=status.HTTP_400_BAD_REQUEST)
+
+@swagger_auto_schema(
+    method='get',
+    operation_description="Получить аналитику по эскалациям(TaskQueue и по тикетам)",
+    responses={
+        200: EscalationSerializer(),
+        400: ErrorResponseSerializer()
+    },
+    tags=['Analytics']
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def escalation_analytics(request):
+    try:
+        now = timezone.now()
+
+        ticket_escalations = {
+            'waiting_timeout': 0,
+            'execution_timeout': 0
+        }
+
+        tickets = Ticket.objects.all().select_related('category')
+        for ticket in tickets:
+
+            if ticket.status == 'open' and ticket.deadline < now:
+                ticket_escalations['waiting_timeout'] += 1
+
+            elif ticket.status in ['assigned', 'in_progress'] and ticket.deadline > now:
+                ticket_escalations['execution_timeout'] += 1
+
+        task_queue_escalations = {
+            'waiting_timeout' : 0,
+            'execution_timeout' : 0
+        }
+
+        tasks = TaskQueue.objects.all()
+
+        for task in tasks:
+            rule = EscalationRule.objects.filter(category=task.ticket.category).first()
+            time_limit = timedelta(seconds=rule.time_limit)
+            if task.is_activated and (task.wait_start_time + time_limit) < now:
+                task_queue_escalations['waiting_timeout'] += 1
+            elif task.is_activated and (task.wait_start_time + time_limit) < now:
+                task_queue_escalations['execution_timeout'] += 1
+
+        result = {
+            'tickets' : {
+                'waiting_timeout' : ticket_escalations['waiting_timeout'],
+                'execution_timeout' : ticket_escalations['execution_timeout'],
+            },
+            'task_queue' : {
+                'waiting_timeout' : task_queue_escalations['waiting_timeout'],
+                'execution_timeout' : task_queue_escalations['execution_timeout'],
+            }
+        }
+
+        serializer = EscalationSerializer(result)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    except ErrorResponseSerializer:
+        return Response({'error': 'ошибка вычисления аналитики по эскалациям'},
+                    status=status.HTTP_400_BAD_REQUEST)

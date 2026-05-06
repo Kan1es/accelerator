@@ -56,3 +56,7 @@ class AnaliticsResponseSerializer(serializers.Serializer):
 class AvgResponseSerializer(serializers.Serializer):
     department_name = serializers.CharField()
     avg_response_time_seconds = serializers.FloatField()
+
+class EscalationSerializer(serializers.Serializer):
+    tickets = serializers.DictField(serializers.IntegerField())
+    task_queue = serializers.DictField(serializers.IntegerField())

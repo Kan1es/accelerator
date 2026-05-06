@@ -60,3 +60,7 @@ class AvgResponseSerializer(serializers.Serializer):
 class EscalationSerializer(serializers.Serializer):
     tickets = serializers.DictField(serializers.IntegerField())
     task_queue = serializers.DictField(serializers.IntegerField())
+
+class CategorySerializer(serializers.Serializer):
+    category_name = serializers.CharField()
+    ticket_count = serializers.IntegerField()

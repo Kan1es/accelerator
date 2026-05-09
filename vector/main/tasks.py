@@ -1,6 +1,10 @@
 from datetime import datetime, timedelta
 
+from django.utils import timezone
+
 from .models import TaskQueue, EscalationRule, Ticket, Employee, Department
+
+from celery import shared_task
 
 GLOBAL_LIMIT = 3600
 # потом подумать над глобальным максимум
@@ -100,3 +104,14 @@ def remind_last_employee():
             message = 'Ты последний активный, не забудь завершить задачи и выключить смену'
 
             #Аналогично, куда выводить сообщение?
+
+@shared_task
+def monitor_deadline(ticket_id):
+    try:
+        ticket = Ticket.objects.get(id=ticket_id)
+    except Ticket.DoesNotExist:
+        return
+
+    if ticket.status == "in_progress" and ticket.deadline < timezone.now():
+        ticket.status = "expired"
+        ticket.save(update_fields=['status'])

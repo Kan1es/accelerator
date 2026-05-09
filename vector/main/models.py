@@ -37,6 +37,8 @@ class Category(models.Model):
     name = models.CharField(max_length=255)
     keywords = models.TextField(blank=True, null=True)
     parent = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True)
+    department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
+
 
     def __str__(self):
         return self.name
@@ -87,3 +89,11 @@ class TaskQueue(models.Model):
     wait_start_time = models.DateTimeField()
     assigned_time = models.DateTimeField()
     is_activated = models.BooleanField(default=True)
+
+class Notification(models.Model):
+    recipient = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='notifications')
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    link = models.CharField(max_length=255, blank=True, null=True)

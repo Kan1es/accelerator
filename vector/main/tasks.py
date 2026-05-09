@@ -115,3 +115,22 @@ def monitor_deadline(ticket_id):
     if ticket.status == "in_progress" and ticket.deadline < timezone.now():
         ticket.status = "expired"
         ticket.save(update_fields=['status'])
+
+@shared_task
+def feedback_for_ml(ticket_id):
+    try:
+        ticket = Ticket.objects.get(id=ticket_id)
+    except Ticket.DoesNotExist:
+        return
+
+    ml_payload = {
+        'ticket_id': ticket.id,
+        'description': ticket.description,
+        'actual_category_id': ticket.category_id if ticket.category else None,
+        'final_status': ticket.status,  # 'resolved'
+    }
+
+    print(f"ML feedback sent for ticket {ticket_id}")
+
+
+

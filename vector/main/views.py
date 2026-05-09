@@ -8,9 +8,10 @@ from rest_framework import status
 from django.utils import timezone
 from .models import Employee, WorkShift, Ticket, Notification, TaskQueue, TicketAssignment
 from .serializers import ShiftEndResponseSerializer, ErrorResponseSerializer, ShiftStartResponseSerializer, \
-    EmployeeStatusSerializer, TicketAcceptResponseSerializer, TicketDeclineResponseSerializer
+    EmployeeStatusSerializer, TicketAcceptResponseSerializer, TicketDeclineResponseSerializer, \
+    TicketCompleteResponseSerializer
 
-from .tasks import monitor_deadline
+from .tasks import monitor_deadline, feedback_for_ml
 from .utils import auto_assign_from_queue, notify_manager
 
 
@@ -302,7 +303,91 @@ def decline_ticket(request, id):
         status=status.HTTP_200_OK
     )
 
+@swagger_auto_schema(
+    method='patch',
+    operation_description="Завершить тикет как выполненный. "
+                          "Переводит тикет в статус 'resolved', освобождает сотрудника, "
+                          "записывает время завершения в TicketAssignment, "
+                          "запускает задачу feedback_for_ml и "
+                          "вызывает автоназначение из очереди.",
+    responses={
+        200: TicketCompleteResponseSerializer(),
+        400: ErrorResponseSerializer(),
+        403: ErrorResponseSerializer(),
+        404: ErrorResponseSerializer(),
+    },
+    tags=['Tickets']
+)
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def complete_ticket(request, id):
+    try:
+        ticket = Ticket.objects.get(id=id)
+    except Ticket.DoesNotExist:
+        return Response(
+            {'error': 'Тикет не найден'},
+            status=status.HTTP_404_NOT_FOUND
+        )
 
+    try:
+        employee = request.user.employee
+    except (AttributeError, Employee.DoesNotExist):
+        return Response(
+            {'error': 'Пользователь не привязан к сотруднику'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    if ticket.assignee != employee:
+        return Response(
+            {'error': 'Вы не являетесь исполнителем этого тикета'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    if ticket.status == 'resolved':
+        return Response(
+            {'error': 'Тикет уже завершён'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    if ticket.status in ('closed', 'expired'):
+        return Response(
+            {'error': f'Нельзя завершить тикет в статусе {ticket.status}'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    if ticket.status not in ('in_progress', 'assigned'):
+        return Response(
+            {'error': 'Тикет может быть завершён только из статуса "в работе" или "назначен"'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    with transaction.atomic():
+        ticket = Ticket.objects.select_for_update().get(id=id)
+        if ticket.assignee != employee:
+            return Response({'error': 'Исполнитель изменился'}, status=status.HTTP_400_BAD_REQUEST)
+
+        ticket.status = 'resolved'
+        ticket.save(update_fields=['status'])
+
+        employee.is_busy = False
+        employee.save(update_fields=['is_busy'])
+
+        active_assignment = TicketAssignment.objects.filter(ticket=ticket, is_resolved=False).first()
+        if active_assignment:
+            active_assignment.resolved_time = timezone.now()
+            active_assignment.is_resolved = True
+            active_assignment.save(update_fields=['resolved_time', 'is_resolved'])
+
+    feedback_for_ml.delay(ticket.id)
+
+    auto_assign_from_queue()
+
+    return Response(
+        {
+            'id': ticket.id,
+            'status': ticket.status,
+            'detail': 'Тикет завершён'
+        },
+        status=status.HTTP_200_OK
+    )
 
 
 

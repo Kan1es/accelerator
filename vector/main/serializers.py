@@ -64,3 +64,8 @@ class EscalationSerializer(serializers.Serializer):
 class CategorySerializer(serializers.Serializer):
     category_name = serializers.CharField()
     ticket_count = serializers.IntegerField()
+
+class TicketAcceptResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    status = serializers.CharField()
+    detail = serializers.CharField(required=False)

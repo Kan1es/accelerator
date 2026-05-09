@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.shortcuts import render
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.decorators import api_view, permission_classes
@@ -5,9 +6,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
-from .models import Employee, WorkShift
+from .models import Employee, WorkShift, Ticket
 from .serializers import ShiftEndResponseSerializer, ErrorResponseSerializer, ShiftStartResponseSerializer, \
-    EmployeeStatusSerializer
+    EmployeeStatusSerializer, TicketAcceptResponseSerializer
+
+from .tasks import monitor_deadline
 
 
 # TODO сервис уведомлений
@@ -120,3 +123,91 @@ def employee_status(request):
 
     serializer = EmployeeStatusSerializer(data)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+@swagger_auto_schema(
+    method='patch',
+    operation_description="Принять тикет в работу"
+                          "Меняет статус тикета на 'in_progress', "
+                          "запускает задачу monitor_deadline и "
+                          "устанавливает флаг is_busy = True у исполнителя.",
+    responses={
+        200: TicketAcceptResponseSerializer(),
+        400: ErrorResponseSerializer(),
+        403: ErrorResponseSerializer(),
+        404: ErrorResponseSerializer(),
+    },
+    tags=['Tickets']
+)
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def accept_ticket(request, id):
+    try:
+        ticket = Ticket.objects.get(id=id)
+    except Ticket.DoesNotExist:
+        return Response(
+            {'error': 'Тикет не найден'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    try:
+        employee = request.user.employee
+    except AttributeError:
+        try:
+            employee = Employee.objects.get(user=request.user)
+        except Employee.DoesNotExist:
+            return Response(
+                {'error': 'Пользователь не привязан к сотруднику'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    except Employee.DoesNotExist:
+        return Response(
+            {'error': 'Пользователь не привязан к сотруднику'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    if ticket.assignee != employee:
+        return Response(
+            {'error': 'Вы не являетесь исполнителем этого тикета'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    if ticket.status == 'in_progress':
+        return Response(
+            {'error': 'Тикет уже в работе'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    if ticket.status in ('resolved', 'closed', 'expired'):
+        return Response(
+            {'error': f'Нельзя принять тикет в статусе {ticket.status}'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    if ticket.status not in ('assigned', 'open'):
+        return Response(
+            {'error': 'Тикет нельзя принять в работу из текущего статуса'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    with transaction.atomic():
+        ticket = Ticket.objects.select_for_update().get(id=id)
+
+        if ticket.status == 'in_progress':
+            return Response(
+                {'error': 'Тикет уже в работе'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        ticket.status = 'in_progress'
+        ticket.save(update_fields=['status'])
+        employee.is_busy = True
+        employee.save(update_fields=['is_busy'])
+
+    monitor_deadline.delay(ticket.id)
+
+    return Response(
+        {
+            'id': ticket.id,
+            'status': ticket.status,
+            'detail': 'Тикет принят в работу'
+        },
+        status=status.HTTP_200_OK
+    )

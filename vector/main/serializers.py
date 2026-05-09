@@ -69,3 +69,9 @@ class TicketAcceptResponseSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     status = serializers.CharField()
     detail = serializers.CharField(required=False)
+
+class TicketDeclineResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    status = serializers.CharField()
+    priority = serializers.IntegerField()
+    detail = serializers.CharField(required=False)

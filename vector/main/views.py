@@ -6,17 +6,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
-from .models import Employee, WorkShift, Ticket
+from .models import Employee, WorkShift, Ticket, Notification, TaskQueue, TicketAssignment
 from .serializers import ShiftEndResponseSerializer, ErrorResponseSerializer, ShiftStartResponseSerializer, \
-    EmployeeStatusSerializer, TicketAcceptResponseSerializer
+    EmployeeStatusSerializer, TicketAcceptResponseSerializer, TicketDeclineResponseSerializer
 
 from .tasks import monitor_deadline
+from .utils import auto_assign_from_queue, notify_manager
 
-
-# TODO сервис уведомлений
-def notify_manager(employee):
-    print(f"Уведомление менеджеру: сотрудник {employee.name} отработал менее 8 часов")
-    pass
 
 @swagger_auto_schema(
     method='post',
@@ -211,3 +207,102 @@ def accept_ticket(request, id):
         },
         status=status.HTTP_200_OK
     )
+
+@swagger_auto_schema(
+    method='patch',
+    operation_description="Отклонить тикет (только для назначенного исполнителя). "
+                          "Освобождает сотрудника, повышает приоритет тикета на 10, "
+                          "возвращает тикет в очередь, вызывает автоназначение и "
+                          "уведомляет менеджера отдела.",
+    responses={
+        200: TicketDeclineResponseSerializer(),
+        400: ErrorResponseSerializer(),
+        403: ErrorResponseSerializer(),
+        404: ErrorResponseSerializer(),
+    },
+    tags=['Tickets']
+)
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def decline_ticket(request, id):
+    try:
+        ticket = Ticket.objects.get(id=id)
+    except Ticket.DoesNotExist:
+        return Response(
+            {'error': 'Тикет не найден'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    try:
+        employee = request.user.employee
+    except (AttributeError, Employee.DoesNotExist):
+        return Response(
+            {'error': 'Пользователь не привязан к сотруднику'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    if ticket.assignee != employee:
+        return Response(
+            {'error': 'Вы не являетесь исполнителем этого тикета'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    if ticket.status in ('resolved', 'closed', 'expired'):
+        return Response(
+            {'error': f'Нельзя отклонить тикет в статусе {ticket.status}'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    with transaction.atomic():
+        ticket = Ticket.objects.select_for_update().get(id=id)
+        if ticket.assignee != employee:
+            return Response({'error': 'Исполнитель изменился'}, status=status.HTTP_400_BAD_REQUEST)
+
+        employee.is_busy = False
+        employee.save(update_fields=['is_busy'])
+
+        ticket.priority += 10
+        ticket.assignee = None
+        ticket.status = 'open'
+        ticket.save(update_fields=['priority', 'assignee', 'status'])
+
+        open_assignment = TicketAssignment.objects.filter(ticket=ticket, is_resolved=False).first()
+        if open_assignment:
+            open_assignment.resolved_time = timezone.now()
+            open_assignment.is_resolved = True
+            open_assignment.save(update_fields=['resolved_time', 'is_resolved'])
+
+        department = None
+        if ticket.category and hasattr(ticket.category, 'department'):
+            department = ticket.category.department
+        if not department and ticket.assignee:  # fallback
+            department = ticket.assignee.department
+        if not department and employee.department:
+            department = employee.department
+
+        TaskQueue.objects.create(
+            ticket=ticket,
+            department=department,
+            priority=ticket.priority,
+            wait_start_time=timezone.now(),
+            assigned_time=timezone.now(),  # или None, но поле not null
+            is_activated=True
+        )
+
+    auto_assign_from_queue()
+
+    if department:
+        notify_manager(department, ticket)
+
+    return Response(
+        {
+            'id': ticket.id,
+            'status': ticket.status,
+            'priority': ticket.priority,
+            'detail': 'Тикет отклонён, возвращён в очередь'
+        },
+        status=status.HTTP_200_OK
+    )
+
+
+
+
+

@@ -1,6 +1,7 @@
 from django.urls import path
 from vector import settings
 from .views import shift_start, shift_end, employee_status, accept_ticket, decline_ticket, complete_ticket
+from .views_mobile import mobile_employees_list
 
 urlpatterns = [
     path('api/shift/start/', shift_start, name='shift_start'),
@@ -9,4 +10,5 @@ urlpatterns = [
     path('api/tickets/<int:id>/accept/', accept_ticket, name='accept-ticket'),
     path('api/tickets/<int:id>/decline/', decline_ticket, name='decline-ticket'),
     path('api/tickets/<int:id>/complete/', complete_ticket, name='complete-ticket'),
+    path('api/mobile/employees/', mobile_employees_list, name='mobile-employees-list'),
 ]

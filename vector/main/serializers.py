@@ -80,3 +80,21 @@ class TicketCompleteResponseSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     status = serializers.CharField()
     detail = serializers.CharField(required=False)
+
+class MobileEmployeeSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    is_on_shift = serializers.BooleanField()
+    is_busy = serializers.BooleanField()
+    current_task_description = serializers.CharField(allow_null=True, required=False)
+    current_task_priority = serializers.IntegerField(allow_null=True, required=False)
+
+class MobileTicketSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    status = serializers.CharField()
+    description = serializers.CharField()
+    assignee_name = serializers.CharField(allow_null=True)
+    priority = serializers.IntegerField()
+
+class SuccessResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()

@@ -95,3 +95,6 @@ class MobileTicketSerializer(serializers.Serializer):
     description = serializers.CharField()
     assignee_name = serializers.CharField(allow_null=True)
     priority = serializers.IntegerField()
+
+class SuccessResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()

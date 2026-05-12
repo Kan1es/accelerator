@@ -2,7 +2,7 @@ from django.db import transaction
 from django.shortcuts import render
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
@@ -12,7 +12,7 @@ from .serializers import ShiftEndResponseSerializer, ErrorResponseSerializer, Sh
     TicketCompleteResponseSerializer
 
 from .tasks import monitor_deadline, feedback_for_ml
-from .utils import auto_assign_from_queue, notify_manager
+from .utils import auto_assign_from_queue, notify_manager, send_websocket_notification
 
 
 @swagger_auto_schema(
@@ -214,7 +214,7 @@ def accept_ticket(request, id):
     operation_description="Отклонить тикет (только для назначенного исполнителя). "
                           "Освобождает сотрудника, повышает приоритет тикета на 10, "
                           "возвращает тикет в очередь, вызывает автоназначение и "
-                          "уведомляет менеджера отдела.",
+                           "уведомляет менеджера отдела.",
     responses={
         200: TicketDeclineResponseSerializer(),
         400: ErrorResponseSerializer(),

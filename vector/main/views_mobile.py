@@ -6,7 +6,7 @@ from rest_framework import status
 from django.db.models import Prefetch
 
 from .models import Employee, WorkShift, Ticket
-from .serializers import MobileEmployeeSerializer, ErrorResponseSerializer
+from .serializers import MobileEmployeeSerializer, ErrorResponseSerializer, MobileTicketSerializer
 
 @swagger_auto_schema(
     method='get',
@@ -56,4 +56,53 @@ def mobile_employees_list(request):
         })
 
     serializer = MobileEmployeeSerializer(result, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+@swagger_auto_schema(
+    method='get',
+    operation_description="Получить список активных тикетов отдела для мобильного приложения",
+    responses={
+        200: MobileTicketSerializer(many=True),
+        400: ErrorResponseSerializer()
+    },
+    tags=['Mobile API']
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def mobile_tickets_list(request):
+    try:
+        employee = request.user.employee
+        department = employee.department
+    except (AttributeError, Employee.DoesNotExist):
+        return Response({'error': 'Пользователь не привязан к сотруднику'},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    if not department:
+        return Response({'error': 'У сотрудника не указан отдел'},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    # Активные статусы: open, assigned, in_progress
+    active_statuses = ['open', 'assigned', 'in_progress']
+    
+    # Сортировка: убывание приоритета (-priority) и возрастание времени ожидания (-created_at)
+    # Время ожидания = current_time - created_at. 
+    # Возрастание времени ожидания означает от меньшего к большему.
+    # Меньшее время ожидания = более позднее created_at.
+    # Поэтому сортировка по created_at DESC (-created_at)
+    tickets = Ticket.objects.filter(
+        category__department=department,
+        status__in=active_statuses
+    ).select_related('assignee').order_by('-priority', '-created_at')
+
+    result = []
+    for ticket in tickets:
+        result.append({
+            'id': ticket.id,
+            'status': ticket.get_status_display(),
+            'description': ticket.description,
+            'assignee_name': ticket.assignee.name if ticket.assignee else None,
+            'priority': ticket.priority
+        })
+
+    serializer = MobileTicketSerializer(result, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)

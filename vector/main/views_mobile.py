@@ -6,7 +6,8 @@ from rest_framework import status
 from django.db.models import Prefetch
 
 from .models import Employee, WorkShift, Ticket
-from .serializers import MobileEmployeeSerializer, ErrorResponseSerializer, MobileTicketSerializer
+from .serializers import MobileEmployeeSerializer, ErrorResponseSerializer, MobileTicketSerializer, SuccessResponseSerializer
+from .utils import notification
 
 @swagger_auto_schema(
     method='get',
@@ -100,3 +101,30 @@ def mobile_tickets_list(request):
 
     serializer = MobileTicketSerializer(result, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@swagger_auto_schema(
+    method='post',
+    operation_description="Отправить сотруднику срочное уведомление",
+    responses={
+        200: SuccessResponseSerializer(),
+        404: ErrorResponseSerializer(),
+        400: ErrorResponseSerializer()
+    },
+    tags=['Mobile API']
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mobile_notify_employee(request, employee_id):
+    try:
+        employee = Employee.objects.get(id=employee_id)
+    except Employee.DoesNotExist:
+        return Response({'error': 'Сотрудник не найден'}, status=status.HTTP_404_NOT_FOUND)
+    
+    notification(
+        employee=employee,
+        title='Срочное уведомление',
+        message='Критический дедлайн, свяжись с руководителем'
+    )
+    
+    return Response({'status': 'sent'}, status=status.HTTP_200_OK)

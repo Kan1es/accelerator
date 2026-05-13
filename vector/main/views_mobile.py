@@ -6,8 +6,12 @@ from rest_framework import status
 from django.db.models import Prefetch
 
 from .models import Employee, WorkShift, Ticket
-from .serializers import MobileEmployeeSerializer, ErrorResponseSerializer, MobileTicketSerializer, SuccessResponseSerializer
+from .serializers import (
+    MobileEmployeeSerializer, ErrorResponseSerializer, MobileTicketSerializer, 
+    SuccessResponseSerializer, PredictRequestSerializer, PredictResponseSerializer
+)
 from .utils import notification
+from .services.ml_client import classify_text
 
 @swagger_auto_schema(
     method='get',
@@ -128,3 +132,32 @@ def mobile_notify_employee(request, employee_id):
     )
     
     return Response({'status': 'sent'}, status=status.HTTP_200_OK)
+
+
+@swagger_auto_schema(
+    method='post',
+    operation_description="Классифицировать текст обращения и получить предсказанную категорию",
+    request_body=PredictRequestSerializer(),
+    responses={
+        200: PredictResponseSerializer(),
+        400: ErrorResponseSerializer()
+    },
+    tags=['Mobile API']
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mobile_predict(request):
+    serializer = PredictRequestSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    text = serializer.validated_data['text']
+    
+    category_id, confidence = classify_text(text)
+    
+    result = {
+        'category_id': category_id,
+        'confidence': confidence
+    }
+    
+    return Response(result, status=status.HTTP_200_OK)

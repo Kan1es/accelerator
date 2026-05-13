@@ -98,3 +98,10 @@ class MobileTicketSerializer(serializers.Serializer):
 
 class SuccessResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
+
+class PredictRequestSerializer(serializers.Serializer):
+    text = serializers.CharField()
+
+class PredictResponseSerializer(serializers.Serializer):
+    category_id = serializers.IntegerField()
+    confidence = serializers.FloatField()

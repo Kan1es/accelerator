@@ -1,7 +1,7 @@
 from django.urls import path
 from vector import settings
 from .views import shift_start, shift_end, employee_status, accept_ticket, decline_ticket, complete_ticket
-from .views_mobile import mobile_employees_list, mobile_tickets_list, mobile_notify_employee
+from .views_mobile import mobile_employees_list, mobile_tickets_list, mobile_notify_employee, mobile_predict
 
 urlpatterns = [
     path('api/shift/start/', shift_start, name='shift_start'),
@@ -13,4 +13,5 @@ urlpatterns = [
     path('api/mobile/employees/', mobile_employees_list, name='mobile-employees-list'),
     path('api/mobile/tickets/', mobile_tickets_list, name='mobile-tickets-list'),
     path('api/mobile/notify/<int:employee_id>/', mobile_notify_employee, name='mobile-notify-employee'),
+    path('api/mobile/predict/', mobile_predict, name='mobile-predict'),
 ]

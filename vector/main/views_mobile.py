@@ -6,7 +6,12 @@ from rest_framework import status
 from django.db.models import Prefetch
 
 from .models import Employee, WorkShift, Ticket
-from .serializers import MobileEmployeeSerializer, ErrorResponseSerializer
+from .serializers import (
+    MobileEmployeeSerializer, ErrorResponseSerializer, MobileTicketSerializer, 
+    SuccessResponseSerializer, PredictRequestSerializer, PredictResponseSerializer
+)
+from .utils import notification
+from .services.ml_client import classify_text
 
 @swagger_auto_schema(
     method='get',
@@ -57,3 +62,102 @@ def mobile_employees_list(request):
 
     serializer = MobileEmployeeSerializer(result, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+@swagger_auto_schema(
+    method='get',
+    operation_description="Получить список активных тикетов отдела для мобильного приложения",
+    responses={
+        200: MobileTicketSerializer(many=True),
+        400: ErrorResponseSerializer()
+    },
+    tags=['Mobile API']
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def mobile_tickets_list(request):
+    try:
+        employee = request.user.employee
+        department = employee.department
+    except (AttributeError, Employee.DoesNotExist):
+        return Response({'error': 'Пользователь не привязан к сотруднику'},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    if not department:
+        return Response({'error': 'У сотрудника не указан отдел'},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    active_statuses = ['open', 'assigned', 'in_progress']
+    
+    tickets = Ticket.objects.filter(
+        category__department=department,
+        status__in=active_statuses
+    ).select_related('assignee').order_by('-priority', '-created_at')
+
+    result = []
+    for ticket in tickets:
+        result.append({
+            'id': ticket.id,
+            'status': ticket.get_status_display(),
+            'description': ticket.description,
+            'assignee_name': ticket.assignee.name if ticket.assignee else None,
+            'priority': ticket.priority
+        })
+
+    serializer = MobileTicketSerializer(result, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@swagger_auto_schema(
+    method='post',
+    operation_description="Отправить сотруднику срочное уведомление",
+    responses={
+        200: SuccessResponseSerializer(),
+        404: ErrorResponseSerializer(),
+        400: ErrorResponseSerializer()
+    },
+    tags=['Mobile API']
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mobile_notify_employee(request, employee_id):
+    try:
+        employee = Employee.objects.get(id=employee_id)
+    except Employee.DoesNotExist:
+        return Response({'error': 'Сотрудник не найден'}, status=status.HTTP_404_NOT_FOUND)
+    
+    notification(
+        employee=employee,
+        title='Срочное уведомление',
+        message='Критический дедлайн, свяжись с руководителем'
+    )
+    
+    return Response({'status': 'sent'}, status=status.HTTP_200_OK)
+
+
+@swagger_auto_schema(
+    method='post',
+    operation_description="Классифицировать текст обращения и получить предсказанную категорию",
+    request_body=PredictRequestSerializer(),
+    responses={
+        200: PredictResponseSerializer(),
+        400: ErrorResponseSerializer()
+    },
+    tags=['Mobile API']
+)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mobile_predict(request):
+    serializer = PredictRequestSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    text = serializer.validated_data['text']
+    
+    category_id, confidence = classify_text(text)
+    
+    result = {
+        'category_id': category_id,
+        'confidence': confidence
+    }
+    
+    return Response(result, status=status.HTTP_200_OK)

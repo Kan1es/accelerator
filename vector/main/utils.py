@@ -19,12 +19,12 @@ def auto_assign_from_queue():
     for entry in queue_entries:
         available_employee = Employee.objects.filter(department=entry.department, is_busy=False, is_active=True).first()
         if available_employee:
+            ticket = entry.ticket
             send_websocket_notification(
                 user_id=available_employee.user.id,
                 notification_type='ticket_assigned',
                 data={'ticket_id': ticket.id, 'message': f'Вам назначен тикет #{ticket.id}'}
             )
-            ticket = entry.ticket
             ticket.assignee = available_employee
             ticket.status = 'assigned'
             ticket.save(update_fields=['assignee', 'status'])

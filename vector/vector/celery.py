@@ -16,12 +16,12 @@ app.conf.beat_schedule = {
         'schedule': 60.0,  # 60 секунд
     },
     'cleanup_end_of_day': {
-        'task': 'your_app.tasks.cleanup_end_of_day',
+        'task': 'main.tasks.cleanup_end_of_day',
         'schedule': crontab(minute=0, hour=0),  # 00:00
     },
 
     'remind_last_employee': {
-        'task': 'your_app.tasks.remind_last_employee',
+        'task': 'main.tasks.remind_last_employee',
         'schedule': 15 * 60.0,  # 15 минут в секундах
     },
     'check_escalation': {

@@ -77,10 +77,8 @@ def avg_time(request):
                     'department' : departament,
                     'time' : avg
                 })
-            else:
-                return Response({'error' : 'Неполные данные'}, status = status.HTTP_400_BAD_REQUEST)
 
-        temp_dep_time.sort(key = lambda n: n['departament'])
+        temp_dep_time.sort(key = lambda n: n['department'])
         current_department = temp_dep_time[0]['department']
         current_time = []
         for data in temp_dep_time:
@@ -88,7 +86,7 @@ def avg_time(request):
                 avg_time = sum(current_time) / len(current_time) if current_time else 0
                 result.append({
                     'department': current_department,
-                    'time': avg_time
+                    'avg_wait_seconds': avg_time
                 })
                 current_department = data['department']
                 current_time = [data['time']]
@@ -97,7 +95,7 @@ def avg_time(request):
         avg_time = sum(current_time) / len(current_time) if current_time else 0
         result.append({
             'department': current_department,
-            'time': avg_time
+            'avg_wait_seconds': avg_time
         })
 
         serializer = AvgResponseSerializer(result, many = True)
@@ -144,8 +142,10 @@ def escalation_analytics(request):
 
         for task in tasks:
             rule = EscalationRule.objects.filter(category=task.ticket.category).first()
+            if not rule:
+                continue
             time_limit = timedelta(seconds=rule.time_limit)
-            if task.is_activated and (task.wait_start_time + time_limit) < now:
+            if task.is_activated and (task.wait_start_time + time_limit) > now:
                 task_queue_escalations['waiting_timeout'] += 1
             elif task.is_activated and (task.wait_start_time + time_limit) < now:
                 task_queue_escalations['execution_timeout'] += 1
@@ -183,7 +183,7 @@ def category_counter_tickets(request):
     start_time = request.query_params.get('start_date')
     end_time = request.query_params.get('end_date')
 
-    if start_time > end_time:
+    if not start_time or not end_time or start_time > end_time:
         return Response({'error': 'Неверный ввод даныых'}, status=status.HTTP_400_BAD_REQUEST)
 
     tickets = Ticket.objects.filter(created_at__range=[start_time, end_time])
@@ -230,7 +230,7 @@ def category_counter_tickets(request):
 # @permission_classes([IsAuthenticated])
 # def classificate_and_create_ticket(request):
 #     try:
-#         text = request.text.get('text')
+#         text = request.data.get('text')
 #         category = text.get('category')
 #         employee = request.user.employee
 #

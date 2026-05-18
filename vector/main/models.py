@@ -29,8 +29,8 @@ class Employee(models.Model):
 class WorkShift(models.Model):
     employee = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, blank=True)
     start_time = models.DateTimeField()
-    end_time = models.DateTimeField()
-    total_seconds = models.IntegerField()
+    end_time = models.DateTimeField(null=True, blank=True)
+    total_seconds = models.IntegerField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
 class Category(models.Model):

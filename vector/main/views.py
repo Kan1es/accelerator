@@ -75,7 +75,7 @@ def shift_end(request):
 
 
     if shift_time < 8 * 3600:
-        notify_manager(employee)
+        notify_manager(employee.department, None)
 
     active_shift.end_time = now
     active_shift.total_seconds = shift_time

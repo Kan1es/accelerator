@@ -105,3 +105,8 @@ class PredictRequestSerializer(serializers.Serializer):
 class PredictResponseSerializer(serializers.Serializer):
     category_id = serializers.IntegerField()
     confidence = serializers.FloatField()
+
+class ClassificatorSerializator(serializers.Serializer):
+    category = serializers.CharField()
+    confidence = serializers.FloatField()
+    ticket_id = serializers.IntegerField()

@@ -4,10 +4,11 @@ from ..models import TicketAssignment, Ticket, Employee, TaskQueue
 
 
 def push_to_queue(ticket, priority):
-    department = ticket.creator.department.name
+    department = ticket.creator.department
     cur_time = datetime.now()
 
-    assig_time = TicketAssignment.objects.filter(ticket = ticket).get('assigned_time')
+    assig_time = TicketAssignment.objects.filter(ticket = ticket).first()
+    assign_ticket = assig_time if assig_time else None
     TaskQueue_new = TaskQueue.objects.create(
         ticket = ticket,
         department = department,
@@ -34,7 +35,7 @@ def assign_ticket_to_employee(ticket, employee):
     deadline = ticket.deadline
 
     employee.is_busy = True
-    employee.current_task = ticket
+    employee.save()
 
     assignment = TicketAssignment.objects.create(
         ticket = ticket,
@@ -53,6 +54,6 @@ def auto_assign_from_queue():
     for ticket in tickets:
         department = ticket.category.parent
 
-        free_employee = Employee.objects.filter(is_active = True, department = department, is_bust = False)
+        free_employee = Employee.objects.filter(is_active = True, department = department, is_busy = False)
         if free_employee.exists():
             assign_ticket_to_employee(ticket, free_employee.first())

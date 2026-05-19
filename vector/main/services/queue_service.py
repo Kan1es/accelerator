@@ -1,20 +1,20 @@
 from datetime import datetime
 
 from ..models import TicketAssignment, Ticket, Employee, TaskQueue
-
+from django.utils import timezone
 
 def push_to_queue(ticket, priority):
     department = ticket.creator.department
     cur_time = datetime.now()
 
     assig_time = TicketAssignment.objects.filter(ticket = ticket).first()
-    assign_ticket = assig_time if assig_time else None
+    assign_ticket = assig_time.assigned_time
     TaskQueue_new = TaskQueue.objects.create(
         ticket = ticket,
         department = department,
         priority = priority,
         wait_start_time = cur_time,
-        assigned_time = assig_time,
+        assigned_time = assign_ticket,
         is_activated = True
     )
     return TaskQueue_new
@@ -28,6 +28,7 @@ def assign_ticket_to_employee(ticket, employee):
         raise ValueError(f"Тикет {ticket.description} недоступен")
     if ticket.status == 'in_progress' or ticket.status == 'In Progress':
         raise ValueError(f"Тикетом {ticket.description} занимается другой сотрудник")
+    # переделать код не сработает
 
     ticket.assignee = employee
     ticket.status = 'assigned'
@@ -41,7 +42,7 @@ def assign_ticket_to_employee(ticket, employee):
         ticket = ticket,
         assignee = employee,
         assigner = assigner,
-        assigned_time = datetime.now(),
+        assigned_time = timezone.now(),
         resolved_time = deadline,
         is_resolved = False
     )
@@ -52,7 +53,8 @@ def auto_assign_from_queue():
     tickets.order_by('priority')
 
     for ticket in tickets:
-        department = ticket.category.parent
+        department = ticket.assignee
+        # через employee выйти на департамент
 
         free_employee = Employee.objects.filter(is_active = True, department = department, is_busy = False)
         if free_employee.exists():

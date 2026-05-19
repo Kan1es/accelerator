@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
 from .models import Ticket, Employee, Department, TicketAssignment, TaskQueue, EscalationRule
-from .serializers import ErrorResponseSerializer, AnaliticsResponseSerializer, AvgResponseSerializer, EscalationSerializer, CategorySerializer
+from .serializers import ErrorResponseSerializer, AnaliticsResponseSerializer, AvgResponseSerializer, EscalationSerializer, CategorySerializer, ClassificatorSerializator
 
 # @swagger_auto_schema(
 #     method='get',
@@ -65,44 +65,40 @@ from .serializers import ErrorResponseSerializer, AnaliticsResponseSerializer, A
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def avg_time(request):
-    try:
-        temp_dep_time = []
-        result = []
-        records = TicketAssignment.objects.filter(assigned_time__isnull=False).select_related('ticket__creator__department')
-        for record in records:
-            if record.ticket and record.ticket.creator and record.ticket.creator.department:
-                departament = record.ticket.creator.department.name
-                avg = record.assigned_time - record.ticket.created_at
-                temp_dep_time.append({
-                    'department' : departament,
-                    'time' : avg
-                })
+    temp_dep_time = []
+    result = []
+    records = TicketAssignment.objects.filter(assigned_time__isnull=False).select_related('ticket__creator__department')
+    for record in records:
+        if record.ticket and record.ticket.creator and record.ticket.creator.department:
+            departament = record.ticket.creator.department.name
+            avg = (record.assigned_time - record.ticket.created_at).total_seconds()
+            temp_dep_time.append({
+                'department' : departament,
+                'time' : avg
+            })
 
-        temp_dep_time.sort(key = lambda n: n['department'])
-        current_department = temp_dep_time[0]['department']
-        current_time = []
-        for data in temp_dep_time:
-            if data['department'] != current_department:
-                avg_time = sum(current_time) / len(current_time) if current_time else 0
-                result.append({
-                    'department': current_department,
-                    'avg_wait_seconds': avg_time
-                })
-                current_department = data['department']
-                current_time = [data['time']]
-            else:
-                current_time.append(data['time'])
-        avg_time = sum(current_time) / len(current_time) if current_time else 0
-        result.append({
-            'department': current_department,
-            'avg_wait_seconds': avg_time
-        })
+    temp_dep_time.sort(key = lambda n: n['department'])
+    current_department = temp_dep_time[0]['department']
+    current_time = []
+    for data in temp_dep_time:
+        if data['department'] != current_department:
+            avg_time = sum(current_time) / len(current_time) if current_time else 0
+            result.append({
+                'department': current_department,
+                'avg_wait_seconds': avg_time
+            })
+            current_department = data['department']
+            current_time = [data['time']]
+        else:
+            current_time.append(data['time'])
+    avg_time = sum(current_time) / len(current_time) if current_time else 0
+    result.append({
+        'department': current_department,
+        'avg_wait_seconds': avg_time
+    })
 
-        serializer = AvgResponseSerializer(result, many = True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    except ErrorResponseSerializer:
-        return Response({'error': 'Ошибка при вычислении времени отклика'},
-                        status=status.HTTP_400_BAD_REQUEST)
+    serializer = AvgResponseSerializer(result, many = True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 @swagger_auto_schema(
     method='get',
@@ -116,57 +112,56 @@ def avg_time(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def escalation_analytics(request):
-    try:
-        now = timezone.now()
+    now = timezone.now()
 
-        ticket_escalations = {
-            'waiting_timeout': 0,
-            'execution_timeout': 0
-        }
+    ticket_escalations = {
+        'waiting_timeout': 0,
+        'execution_timeout': 0
+    }
 
-        tickets = Ticket.objects.all().select_related('category')
-        for ticket in tickets:
-
+    tickets = Ticket.objects.all().select_related('category')
+    for ticket in tickets:
+        if ticket.deadline:
             if ticket.status == 'open' and ticket.deadline < now:
                 ticket_escalations['waiting_timeout'] += 1
 
             elif ticket.status in ['assigned', 'in_progress'] and ticket.deadline > now:
                 ticket_escalations['execution_timeout'] += 1
+        else:
+            continue
+    # deadline - None, будет ошибка. Также проверить на пустую строчку
 
-        task_queue_escalations = {
-            'waiting_timeout' : 0,
-            'execution_timeout' : 0
+    task_queue_escalations = {
+        'waiting_timeout' : 0,
+        'execution_timeout' : 0
+    }
+
+    tasks = TaskQueue.objects.all()
+
+    for task in tasks:
+        rule = EscalationRule.objects.filter(category=task.ticket.category).first()
+        if not rule:
+            continue
+        time_limit = timedelta(seconds=rule.time_limit)
+        if task.is_activated and (task.wait_start_time + time_limit) < now:
+            task_queue_escalations['waiting_timeout'] += 1
+        elif task.is_activated and (task.wait_start_time + time_limit) > now:
+            task_queue_escalations['execution_timeout'] += 1
+    #Аналогично, выше была ошибка
+
+    result = {
+        'tickets' : {
+            'waiting_timeout' : ticket_escalations['waiting_timeout'],
+            'execution_timeout' : ticket_escalations['execution_timeout'],
+        },
+        'task_queue' : {
+            'waiting_timeout' : task_queue_escalations['waiting_timeout'],
+            'execution_timeout' : task_queue_escalations['execution_timeout'],
         }
+    }
 
-        tasks = TaskQueue.objects.all()
-
-        for task in tasks:
-            rule = EscalationRule.objects.filter(category=task.ticket.category).first()
-            if not rule:
-                continue
-            time_limit = timedelta(seconds=rule.time_limit)
-            if task.is_activated and (task.wait_start_time + time_limit) > now:
-                task_queue_escalations['waiting_timeout'] += 1
-            elif task.is_activated and (task.wait_start_time + time_limit) < now:
-                task_queue_escalations['execution_timeout'] += 1
-
-        result = {
-            'tickets' : {
-                'waiting_timeout' : ticket_escalations['waiting_timeout'],
-                'execution_timeout' : ticket_escalations['execution_timeout'],
-            },
-            'task_queue' : {
-                'waiting_timeout' : task_queue_escalations['waiting_timeout'],
-                'execution_timeout' : task_queue_escalations['execution_timeout'],
-            }
-        }
-
-        serializer = EscalationSerializer(result)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    except ErrorResponseSerializer:
-        return Response({'error': 'ошибка вычисления аналитики по эскалациям'},
-                    status=status.HTTP_400_BAD_REQUEST)
+    serializer = EscalationSerializer(result)
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 @swagger_auto_schema(
     method='get',
@@ -211,50 +206,42 @@ def category_counter_tickets(request):
 
 
 # код ниже я не знаю куда пихать. Обозначил его на канбан доске голубым(не натурал, получается). И закинул в тестирование
-# class ClassificatorSerializator(serializers.Serializer):
-#     category = serializers.CharField()
-#     confidence = serializers.FloatField()
-#     ticket_id = serializers.IntegerField()
-# # это в сериализаторы тыкнуть
-#
-# @swagger_auto_schema(
-#     method='get',
-#     operation_description="Создание тикета через чат",
-#     responses={
-#         200: ClassificatorSerializator(),
-#         400: ErrorResponseSerializer()
-#     },
-#     tags=['Analytics']
-# )
-# @api_view(['GET'])
-# @permission_classes([IsAuthenticated])
-# def classificate_and_create_ticket(request):
-#     try:
-#         text = request.data.get('text')
-#         category = text.get('category')
-#         employee = request.user.employee
-#
-#         processed_text = classify_text(text) # такой функции еще нет, нужен фильтр блума
-#         escalation_rule = EscalationRule.objects.filter(category_id=category).first()
-#         new_ticket = Ticket.objects.create(
-#             description = text,
-#             category = category, #прописано в тз category_id но такого поля нет
-#             priority = , #какой у нас средний по умолчанию приоритет?
-#             deadline = escalation_rule.time_limit,
-#             status = 'open',
-#             creator = employee,
-#             created_at = datetime.now()
-#         )
-#
-#         push_to_queue(new_ticket, priority=new_ticket.priority)
-#
-#         result = {
-#             'category': new_ticket.category.name,
-#             # 'confidence': confidence,     откуда мы получаем confindece?
-#             'ticket_id': new_ticket.id
-#         }
-#
-#         serializer = ClassificatorSerializator(result)
-#         return Response(serializer.data, status=status.HTTP_200_OK)
-#     except:
-#         return Response({'error': 'ошибка'}, status=status.HTTP_400_BAD_REQUEST)
+
+@swagger_auto_schema(
+    method='get',
+    operation_description="Создание тикета через чат",
+    responses={
+        200: ClassificatorSerializator(),
+        400: ErrorResponseSerializer()
+    },
+    tags=['Analytics']
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def classificate_and_create_ticket(request):
+    text = request.data.get('text')
+    category = text.get('category')
+    employee = request.user.employee
+
+    processed_text = classify_text(text) # такой функции еще нет, нужен фильтр блума
+    escalation_rule = EscalationRule.objects.filter(category_id=category).first()
+    new_ticket = Ticket.objects.create(
+        description = processed_text,
+        category = category, #прописано в тз category_id но такого поля нет
+        priority = , #какой у нас средний по умолчанию приоритет?
+        deadline = escalation_rule.time_limit,
+        status = 'open',
+        creator = employee,
+        created_at = datetime.now()
+    )
+
+    push_to_queue(new_ticket, priority=new_ticket.priority)
+
+    result = {
+        'category': new_ticket.category.name,
+        # 'confidence': confidence,     откуда мы получаем confindece?
+        'ticket_id': new_ticket.id
+    }
+
+    serializer = ClassificatorSerializator(result)
+    return Response(serializer.data, status=status.HTTP_200_OK)

@@ -1,12 +1,14 @@
+import asyncio
 import json
 import logging
 import os
 from contextlib import asynccontextmanager
+from typing import Optional
 
 import torch
 import torch.nn as nn
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Request
+from pydantic import BaseModel, Field
 from transformers import AutoModel, AutoTokenizer
 
 logging.basicConfig(
@@ -26,21 +28,33 @@ CATEGORY_NAMES    = os.getenv("CATEGORY_NAMES",    os.path.join(_BASE, "artifact
 RUBERT_MODEL_NAME = os.getenv("RUBERT_MODEL_NAME", "cointegrated/rubert-tiny2")
 NUM_CLASSES_ENV   = int(os.getenv("NUM_CLASSES", "14"))
 DEVICE_ENV        = os.getenv("DEVICE", "auto")
+INFERENCE_TIMEOUT = float(os.getenv("INFERENCE_TIMEOUT", "30.0"))  # секунды
 
 MAX_LENGTH = 512
 
 
-# ─── Глобальное состояние ────────────────────────────────────────────────────
+# ─── Состояние модели (dataclass вместо глобальных переменных) ────────────────
 
-bert_model      = None
-classifier_head = None
-tokenizer       = None
-device          = None
-id_to_category: dict[int, str] = {}
-index_to_db_id: dict[int, int] = {}
-category_names: dict[int, str] = {}
-num_classes: int = NUM_CLASSES_ENV
-load_error: str = ""
+class ModelState:
+    def __init__(self):
+        self.bert_model:      Optional[nn.Module]           = None
+        self.classifier_head: Optional[nn.Linear]           = None
+        self.tokenizer:       Optional[AutoTokenizer]       = None
+        self.device:          Optional[torch.device]        = None
+        self.id_to_category:  dict[int, str]                = {}
+        self.index_to_db_id:  dict[int, int]                = {}
+        self.category_names:  dict[int, str]                = {}
+        self.num_classes:     int                           = NUM_CLASSES_ENV
+        self.load_error:      str                           = ""
+
+    @property
+    def is_ready(self) -> bool:
+        return self.bert_model is not None
+
+    def release(self):
+        self.bert_model      = None
+        self.classifier_head = None
+        self.tokenizer       = None
 
 
 # ─── Вспомогательные функции ─────────────────────────────────────────────────
@@ -97,24 +111,19 @@ def _load_class_mapping() -> tuple[dict[int, str], dict[int, int], int]:
 
 # ─── Загрузка модели ─────────────────────────────────────────────────────────
 
-def load_model():
-    global bert_model, classifier_head, tokenizer, device
-    global id_to_category, index_to_db_id, category_names, num_classes, load_error
+def load_model() -> ModelState:
+    state = ModelState()
+    state.device = _resolve_device()
 
-    load_error = ""
-
-    device = _resolve_device()
-
-    id_to_category, index_to_db_id, num_classes = _load_class_mapping()
+    state.id_to_category, state.index_to_db_id, state.num_classes = _load_class_mapping()
 
     if os.path.isfile(CATEGORY_NAMES):
         with open(CATEGORY_NAMES, "r", encoding="utf-8") as f:
             raw = json.load(f)
-        category_names = {int(k): v for k, v in raw.items()}
-        logger.info("Загружены названия категорий: %d штук", len(category_names))
+        state.category_names = {int(k): v for k, v in raw.items()}
+        logger.info("Загружены названия категорий: %d штук", len(state.category_names))
     else:
         logger.warning("category_names.json не найден: %s.", CATEGORY_NAMES)
-        category_names = {}
 
     if not os.path.isfile(MODEL_CHECKPOINT):
         raise FileNotFoundError(
@@ -125,10 +134,10 @@ def load_model():
     tokenizer_path = os.path.join(_BASE, "artifacts", "tokenizer")
     if os.path.isdir(tokenizer_path):
         logger.info("Загрузка токенизатора из локальной папки: %s", tokenizer_path)
-        tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, local_files_only=True)
+        state.tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, local_files_only=True)
     else:
         logger.info("Загрузка токенизатора из HF Hub: %s", RUBERT_MODEL_NAME)
-        tokenizer = AutoTokenizer.from_pretrained(RUBERT_MODEL_NAME)
+        state.tokenizer = AutoTokenizer.from_pretrained(RUBERT_MODEL_NAME)
 
     logger.info("Инициализация архитектуры BertModel (%s) ...", RUBERT_MODEL_NAME)
     try:
@@ -139,11 +148,12 @@ def load_model():
         ) from exc
 
     hidden_size = bert_base.config.hidden_size
-    bert_base.classifier = nn.Linear(hidden_size, num_classes)
+    bert_base.classifier = nn.Linear(hidden_size, state.num_classes)
 
     logger.info("Загрузка чекпоинта из %s ...", MODEL_CHECKPOINT)
     try:
-        checkpoint = torch.load(MODEL_CHECKPOINT, map_location=device, weights_only=False)
+        # FIX: weights_only=True — защита от вредоносного pickle
+        checkpoint = torch.load(MODEL_CHECKPOINT, map_location=state.device, weights_only=True)
     except Exception as exc:
         raise RuntimeError(
             f"Не удалось прочитать чекпоинт: {exc}. "
@@ -178,34 +188,36 @@ def load_model():
         epoch, f"{best_acc:.4f}" if isinstance(best_acc, float) else best_acc,
     )
 
-    bert_base.to(device)
+    bert_base.to(state.device)
     bert_base.eval()
 
-    bert_model      = bert_base
-    classifier_head = bert_base.classifier
-    logger.info("Сервис готов. hidden_size=%d, num_classes=%d", hidden_size, num_classes)
+    state.bert_model      = bert_base
+    state.classifier_head = bert_base.classifier
+
+    logger.info("Сервис готов. hidden_size=%d, num_classes=%d", hidden_size, state.num_classes)
+    return state
 
 
 # ─── Lifespan ────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global load_error
-
     logger.info("Запуск ML-сервиса ...")
+
+    state = ModelState()
     try:
-        load_model()
+        state = load_model()
     except Exception as exc:
-        load_error = str(exc)
+        state.load_error = str(exc)
         logger.error("Ошибка загрузки модели: %s", exc)
+
+    # FIX: храним состояние в app.state — никаких глобальных переменных
+    app.state.model = state
 
     yield
 
     logger.info("Остановка ML-сервиса ...")
-    global bert_model, classifier_head, tokenizer
-    bert_model      = None
-    classifier_head = None
-    tokenizer       = None
+    app.state.model.release()
     logger.info("Ресурсы освобождены.")
 
 
@@ -214,7 +226,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Вектор — ML Service",
     description="Классификация обращений сотрудников. Архитектура: RuBERT-tiny2 + Linear head.",
-    version="0.3.0",
+    version="0.4.0",
     lifespan=lifespan,
 )
 
@@ -222,67 +234,99 @@ app = FastAPI(
 # ─── Схемы ───────────────────────────────────────────────────────────────────
 
 class PredictRequest(BaseModel):
-    text: str
+    # FIX: ограничение длины входного текста
+    text: str = Field(..., min_length=1, max_length=10_000)
 
 
 class PredictResponse(BaseModel):
-    category_id: int
+    category_id:    int
     category_db_id: int
-    category_name: str
-    confidence: float
+    category_name:  str
+    confidence:     float
+
+
+# ─── Inference (синхронная функция для run_in_executor) ───────────────────────
+
+def _run_inference(state: ModelState, text: str) -> tuple[int, float]:
+    """Выполняет inference в отдельном потоке, не блокируя event loop."""
+    inputs = state.tokenizer(
+        text,
+        return_tensors="pt",
+        truncation=True,
+        max_length=MAX_LENGTH,
+        padding=True,
+    )
+    inputs = {k: v.to(state.device) for k, v in inputs.items()}
+
+    with torch.no_grad():
+        outputs       = state.bert_model(**inputs)
+        cls_embedding = outputs.last_hidden_state[:, 0, :]
+        logits        = state.classifier_head(cls_embedding)
+
+    probs       = torch.softmax(logits, dim=-1)
+    confidence  = float(probs.max().item())
+    category_id = int(torch.argmax(probs, dim=-1).item())
+    return category_id, confidence
 
 
 # ─── Эндпоинты ───────────────────────────────────────────────────────────────
 
 @app.get("/health")
-async def health_check():
+async def health_check(request: Request):
+    state: ModelState = request.app.state.model
+
+    # FIX: возвращаем 503 если модель не загружена
+    if not state.is_ready:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "status": "model_not_loaded",
+                "model_loaded": False,
+                "load_error": state.load_error or "см. логи запуска",
+            },
+        )
+
     return {
-        "status": "ok" if bert_model is not None else "model_not_loaded",
-        "model_loaded": bert_model is not None,
+        "status": "ok",
+        "model_loaded": True,
         "model": RUBERT_MODEL_NAME,
-        "num_classes": num_classes,
-        "device": str(device) if device else "unknown",
-        "load_error": load_error or None,
+        "num_classes": state.num_classes,
+        "device": str(state.device),
+        "load_error": None,
     }
 
 
 @app.post("/predict", response_model=PredictResponse)
-async def predict(request: PredictRequest):
-    if bert_model is None:
+async def predict(request: PredictRequest, http_request: Request):
+    state: ModelState = http_request.app.state.model
+
+    if not state.is_ready:
         raise HTTPException(
             status_code=503,
-            detail=f"Модель не загружена. Причина: {load_error or 'см. логи запуска'}",
+            detail=f"Модель не загружена. Причина: {state.load_error or 'см. логи запуска'}",
         )
 
     text = request.text.strip()
-    if not text:
-        raise HTTPException(status_code=422, detail="Поле text не может быть пустым.")
 
     try:
-        inputs = tokenizer(
-            text,
-            return_tensors="pt",
-            truncation=True,
-            max_length=MAX_LENGTH,
-            padding=True,
+        # FIX: inference в executor — не блокирует event loop
+        # FIX: таймаут на inference
+        loop = asyncio.get_running_loop()
+        category_id, confidence = await asyncio.wait_for(
+            loop.run_in_executor(None, _run_inference, state, text),
+            timeout=INFERENCE_TIMEOUT,
         )
-        inputs = {k: v.to(device) for k, v in inputs.items()}
-
-        with torch.no_grad():
-            outputs       = bert_model(**inputs)
-            cls_embedding = outputs.last_hidden_state[:, 0, :]
-            logits        = classifier_head(cls_embedding)
-
-        probs       = torch.softmax(logits, dim=-1)
-        confidence  = float(probs.max().item())
-        category_id = int(torch.argmax(probs, dim=-1).item())
-
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=504,
+            detail=f"Inference превысил таймаут ({INFERENCE_TIMEOUT}s).",
+        )
     except Exception as exc:
         logger.exception("Ошибка inference: %s", exc)
         raise HTTPException(status_code=500, detail=f"Ошибка inference: {exc}") from exc
 
-    category_db_id = index_to_db_id.get(category_id, category_id + 1)
-    category_name  = category_names.get(category_db_id, f"Категория {category_db_id}")
+    category_db_id = state.index_to_db_id.get(category_id, category_id + 1)
+    category_name  = state.category_names.get(category_db_id, f"Категория {category_db_id}")
 
     return PredictResponse(
         category_id=category_id,

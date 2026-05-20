@@ -206,6 +206,7 @@ body {
     transform: translateX(-50%) translateY(0);
     opacity: 1;
 }
+
 :root {
     --bg-main: #0D0D0D;
     --bg-card: #151515;
@@ -457,4 +458,86 @@ body {
 .toast-wrap.show {
     transform: translateX(-50%) translateY(0);
     opacity: 1;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Sora', sans-serif;
+    background: var(--bg-main);
+    color: #fff;
+}
+
+.nav-item {
+    transition: color 0.2s;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #2A2A2A;
+    border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #FF7A00;
+}
+
+.task-card {
+    background: #111111;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 5px;
+    padding: 14px 18px;
+    transition: border-color 0.2s;
+    cursor: pointer;
+}
+
+.task-card:hover {
+    border-color: rgba(255, 122, 0, 0.3);
+}
+
+.task-card.done {
+    border-color: rgba(34, 197, 94, 0.2);
+}
+
+/* Donut chart */
+.donut-ring {
+    transition: stroke-dashoffset 0.6s cubic-bezier(.4, 0, .2, 1);
+}
+
+/* Filter input */
+.filter-input {
+    background: #111;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: #fff;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-family: 'Sora', sans-serif;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.filter-input:focus {
+    border-color: rgba(255, 122, 0, 0.5);
+}
+
+.filter-input::placeholder {
+    color: var(--text-muted);
+}
+
+.badge-done {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #22C55E;
+    font-size: 11px;
 }

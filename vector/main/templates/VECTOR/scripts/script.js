@@ -51,12 +51,15 @@ window.addEventListener('DOMContentLoaded', () => {
 
 
 // Закрытие при клике на область чата (только для мобилок)
-document.querySelector('main').addEventListener('click', () => {
-    const sidebar = document.getElementById('sidebar');
-    if (window.innerWidth < 1024 && !sidebar.classList.contains('sidebar-hidden')) {
-        toggleSidebar();
-    }
-});
+const mainElement = document.querySelector('main');
+if (mainElement) {
+    mainElement.addEventListener('click', () => {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar && window.innerWidth < 1024 && !sidebar.classList.contains('sidebar-hidden')) {
+            toggleSidebar();
+        }
+    });
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     // Печатная машинка
@@ -65,13 +68,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let i = 0;
 
     function type() {
-        if (i < text.length) {
+        if (target && i < text.length) {
             target.innerHTML += text.charAt(i);
             i++;
             setTimeout(type, 60);
         }
     }
-    type();
+    if (target) {
+        type();
+    }
 
     // Подсветка стрелок
     const emp = document.getElementById('card-emp');
@@ -79,24 +84,105 @@ document.addEventListener('DOMContentLoaded', () => {
     const toEmp = document.getElementById('arrow-to-emp');
     const toMgr = document.getElementById('arrow-to-mgr');
 
-    // Наведение на левую карточку (Сотрудник) -> стрелка влево
-    emp.addEventListener('mouseenter', () => {
-        toEmp.style.color = '#FF9A3C';
-        toEmp.style.filter = 'drop-shadow(0 0 10px rgba(255,154,60,0.5))';
-    });
-    emp.addEventListener('mouseleave', () => {
-        toEmp.style.color = '#2A2A2A';
-        toEmp.style.filter = 'none';
-    });
+    if (emp && toEmp) {
+        // Наведение на левую карточку (Сотрудник) -> стрелка влево
+        emp.addEventListener('mouseenter', () => {
+            toEmp.style.color = '#FF9A3C';
+            toEmp.style.filter = 'drop-shadow(0 0 10px rgba(255,154,60,0.5))';
+        });
+        emp.addEventListener('mouseleave', () => {
+            toEmp.style.color = '#2A2A2A';
+            toEmp.style.filter = 'none';
+        });
+    }
 
-    // Наведение на правую карточку (Управляющий) -> стрелка вправо
-    mgr.addEventListener('mouseenter', () => {
-        toMgr.style.color = '#FF9A3C';
-        toMgr.style.filter = 'drop-shadow(0 0 10px rgba(255,154,60,0.5))';
-    });
-    mgr.addEventListener('mouseleave', () => {
-        toMgr.style.color = '#2A2A2A';
-        toMgr.style.filter = 'none';
-    });
+    if (mgr && toMgr) {
+        // Наведение на правую карточку (Управляющий) -> стрелка вправо
+        mgr.addEventListener('mouseenter', () => {
+            toMgr.style.color = '#FF9A3C';
+            toMgr.style.filter = 'drop-shadow(0 0 10px rgba(255,154,60,0.5))';
+        });
+        mgr.addEventListener('mouseleave', () => {
+            toMgr.style.color = '#2A2A2A';
+            toMgr.style.filter = 'none';
+        });
+    }
+
+    // Приветственное сообщение в чате
+    const chatBox = document.getElementById('chat-box');
+    if (chatBox && chatBox.children.length === 0) {
+        addBotMessage("Здравствуйте! Я интеллектуальная система поддержки «ВЕКТОР-ИИ». Опишите вашу проблему, и я классифицирую обращение, назначу исполнителя и отправлю задачу в нужный отдел.");
+    }
+
+    // Обработка Enter в чате
+    const userInput = document.getElementById('user-input');
+    if (userInput) {
+        userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    }
 });
+
+// Функции для чата
+window.addBotMessage = function(text) {
+    const chatBox = document.getElementById('chat-box');
+    if (!chatBox) return;
+
+    const botMessageHTML = `
+        <div class="flex gap-4 md:gap-6 animate-gentle self-start max-w-[80%]">
+            <div class="w-10 h-10 md:w-12 md:h-12 shrink-0 bg-[#151515] border border-[#2A2A2A] rounded-xl flex items-center justify-center">
+                <img src="images/ВЕКТОР.svg" class="w-6 h-6 md:w-8 md:h-8">
+            </div>
+            <div class="space-y-2">
+                <p class="text-sm text-[#FF7A00] font-semibold">ВЕКТОР</p>
+                <div class="bg-[#151515] border border-[#2A2A2A] p-4 rounded-[20px] rounded-tl-none text-sm md:text-md leading-relaxed text-white">
+                    ${text}
+                </div>
+            </div>
+        </div>
+    `;
+    chatBox.insertAdjacentHTML('beforeend', botMessageHTML);
+    chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+}
+
+window.addUserMessage = function(text) {
+    const chatBox = document.getElementById('chat-box');
+    if (!chatBox) return;
+
+    const userMessageHTML = `
+        <div class="flex gap-4 md:gap-6 animate-gentle self-end justify-end max-w-[80%]">
+            <div class="space-y-2 text-right">
+                <p class="text-sm text-[#6B6B6B] font-semibold">Вы</p>
+                <div class="bg-[#FF7A00]/10 border border-[#FF7A00]/30 p-4 rounded-[20px] rounded-tr-none text-sm md:text-md leading-relaxed text-white">
+                    ${text}
+                </div>
+            </div>
+        </div>
+    `;
+    chatBox.insertAdjacentHTML('beforeend', userMessageHTML);
+    chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+}
+
+window.sendMessage = function() {
+    const input = document.getElementById('user-input');
+    if (!input) return;
+
+    const text = input.value.trim();
+    if (!text) return;
+
+    addUserMessage(text);
+    input.value = '';
+
+    // Имитация ответа ИИ или отправка на API
+    addBotMessage("Анализирую обращение...");
+    
+    // В будущем тут будет реальный POST запрос к /api/agent/classify/
+    setTimeout(() => {
+        // Заглушка для ответа
+        addBotMessage("Спасибо за обращение! Система ИИ классифицировала вашу заявку. В данный момент подключение к бэкенду настраивается.");
+    }, 1500);
+}
+
 

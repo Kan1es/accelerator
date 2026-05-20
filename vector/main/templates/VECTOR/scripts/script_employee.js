@@ -363,7 +363,7 @@ function taskManager() {
 
             const diffMs = target - now; // разница в миллисекундах
             const diffMins = Math.floor(diffMs / 60000);
-            const h = Math.floor(diffMins / 6000);
+            const h = Math.floor(diffMins / 60);
             const m = diffMins % 60;
 
             if (h > 0) {

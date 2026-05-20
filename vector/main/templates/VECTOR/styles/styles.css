@@ -20,7 +20,10 @@
     transform: translate(-40px, -40px);
     
 }
-
+body {
+    font-family: 'Sora', sans-serif;
+    color: #fff;
+}
 .faq-pill {
     background: #151515;
     border: 1px solid #2A2A2A;
@@ -143,7 +146,6 @@
     body { overflow-y: auto; }
 }
 
-/* Базовая раскладка */
 .sidebar {
     width: 280px;
     height: 100vh;
@@ -157,10 +159,9 @@
 .sidebar.collapsed {
     margin-left: -280px;
 }
-/* Обнуление и база */
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-/* Шапка сайдбара с лого и кнопкой закрытия */
 .sidebar-header {
     padding: 24px 20px;
 }
@@ -186,7 +187,6 @@
 
 .sidebar-toggle:hover { color: #FF7A00; }
 
-/* Основная область контента */
 .main-content {
     flex: 1;
     display: flex;
@@ -208,10 +208,9 @@
     border: none;
     color: #FF7A00;
     cursor: pointer;
-    display: none; /* Скрыта, пока сайдбар открыт */
+    display: none; 
 }
 
-/* Область сообщений */
 .messages-area {
     flex: 1;
     overflow-y: auto;
@@ -221,7 +220,6 @@
     gap: 20px;
 }
 
-/* История и навигация */
 .sidebar-content {
     flex: 1;
     overflow-y: auto;
@@ -247,7 +245,6 @@
     font-size: 14px;
 }
 
-/* Кнопка "Вернуться" в шапке (текст + стрелка) */
 .header-return {
     gap: 6px;
     font-size: 14px;
@@ -263,7 +260,6 @@
     position: relative;
 }
 
-/* Сайдбар элементы */
 .user-card {
     border-top: 1px solid rgba(255, 255, 255, 0.05);
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
@@ -281,19 +277,16 @@
     transition: all 0.2s;
 }
 
-/* FF9A3C 20% при ховере */
 .sdbar-item:hover {
     background: rgba(255, 154, 60, 0.2);
     color: #FF9A3C;
 }
 
-/* CC6200 20% при зажатии */
 .sdbar-item:active {
     background: rgba(204, 98, 0, 0.2);
     color: #CC6200;
 }
 
-/* Кнопка "Вернуться" и "На главную" */
 .header-return, .nav-back {
     color: #6B6B6B;
     text-decoration: none;
@@ -304,7 +297,6 @@
 
 .header-return:hover, .nav-back:hover { color: #fff; }
 
-/* Поле ввода */
 .input-area {
     padding: 20px 40px 40px;
     display: flex;

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ВЕКТОР - Вход</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles/style_login.css">
+</head>
+
+<body>
+    <div class="bg-grid"></div>
+
+    <header class="relative z-10 p-3 md:px-10 flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
+        <a href="index.html" class="flex items-center gap-4 md:gap-6">
+            <img src="images/ВЕКТОР.svg" class="w-12 h-12 md:w-14 md:h-14" alt="Logo"">
+        <span class=" text-2xl md:text-5xl font-semibold tracking-tighter uppercase">ВЕКТОР</span>
+        </a>
+        <nav class="flex flex-wrap justify-center gap-4 md:gap-12 items-center">
+            <a href="login.html" class="text-sm md:text-xl font-light text-[#FF7A00]">Сотруднику</a>
+            <a href="index.html"
+                class="text-sm md:text-xl font-light text-[#B3B3B3] hover:text-[#FF9A3C] transition-colors">Пользователю</a>
+            <a href="support.html"
+                class="text-sm md:text-xl font-light text-[#B3B3B3] hover:text-[#FF9A3C] transition-colors">Поддержка</a>
+        </nav>
+    </header>
+
+    <main class="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-10 gap-10">
+
+        <div class="h-12 flex items-center">
+            <h1 class="text-2xl md:text-4xl font-light text-center">
+                <span id="tw-role"></span><span class="cursor-blink text-[#FF7A00]">|</span>
+            </h1>
+        </div>
+
+        <div class="roles-row flex flex-wrap items-center justify-center gap-6 md:gap-10">
+
+            <div id="card-emp" class="role-card" onclick="selectRole('employee')">
+                <div class="role-badge">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                        <path d="M20 6L9 17l-5-5" />
+                    </svg>
+                </div>
+                <img src="images/hammer.png" class="card-icon hammer-anim" alt="employee"">
+                <span class="role-title">Я сотрудник</span>
+            </div>
+
+            <div class="arrows-container flex flex-col gap-6">
+                <svg id="arrow-to-mgr" class="arrow-hor" width="50" height="26" viewBox="0 0 60 30" fill="currentColor">
+                    <path d="M60 15L40 0V30L60 15ZM0 17.5H45V12.5H0V17.5Z" />
+                </svg>
+                <svg id="arrow-to-emp" class="arrow-hor" width="50" height="26" viewBox="0 0 60 30" fill="currentColor">
+                    <path d="M0 15L20 30V0L0 15ZM60 12.5H15V17.5H60V12.5Z" />
+                </svg>
+            </div>
+
+            <div id="card-mgr" class="role-card" onclick="selectRole('manager')">
+                <div class="role-badge">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                        <path d="M20 6L9 17l-5-5" />
+                    </svg>
+                </div>
+                <img src="images/tie.png" class="card-icon tie-anim" alt="manager"">
+                <span class="role-title">Я управляющий</span>
+            </div>
+        </div>
+
+        <div id="login-section">
+            <div class="login-card w-full max-w-sm mx-auto p-7">
+
+                <div class="flex items-center gap-3 mb-6">
+                    <div id="role-indicator" class="w-8 h-8 rounded-full bg-[#FF7A00]/10 border border-[#FF7A00]/30
+                            flex items-center justify-center shrink-0">
+                        <svg id="role-icon-emp" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF7A00"
+                            stroke-width="2" class="hidden">
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                        </svg>
+                        <svg id="role-icon-mgr" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FF7A00"
+                            stroke-width="2" class="hidden">
+                            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                            <circle cx="12" cy="7" r="4" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-xs text-[#6B6B6B]">Вход как</p>
+                        <p id="role-label" class="text-sm font-medium text-[#FF7A00]">—</p>
+                    </div>
+                    <button onclick="resetRole()"
+                        class="ml-auto text-[#6B6B6B] hover:text-white transition-colors text-xs flex items-center gap-1">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M19 12H5M12 5l-7 7 7 7" />
+                        </svg>
+                        Изменить
+                    </button>
+                </div>
+
+                <form id="login-form" novalidate>
+
+                    <div class="mb-4">
+                        <label class="block text-xs text-[#B3B3B3] mb-1.5">Логин</label>
+                        <input id="input-login" type="text" class="form-input" placeholder="Введите логин"
+                            autocomplete="username">
+                    </div>
+
+                    <div class="mb-5">
+                        <label class="block text-xs text-[#B3B3B3] mb-1.5">Пароль</label>
+                        <div class="relative">
+                            <input id="input-password" type="password" class="form-input pr-10"
+                                placeholder="Введите пароль" autocomplete="current-password">
+                            <button type="button" class="eye-btn" onclick="togglePassword()">
+                                <svg id="eye-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="error-box" class="error-box mb-4">Неверный логин или пароль</div>
+
+                    <button type="submit" id="submit-btn" class="btn-primary">
+                        <span id="btn-text">Войти</span>
+                        <span id="btn-spinner" class="hidden"><span class="spinner"></span></span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="scripts/script_login.js"></script>
+</body>
+
+</html>

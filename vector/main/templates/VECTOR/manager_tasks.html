@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ВЕКТОР — Все задачи</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/styles_manager.css">
+</head>
+<body class="bg-[#0D0D0D] text-white h-screen flex flex-col overflow-x-hidden">
+
+    <!-- HEADER -->
+    <header class="p-3 md:px-10 flex flex-col md:flex-row justify-between items-center gap-6 z-50 relative shrink-0">
+        <div class="flex items-center gap-4">
+            <a href="manager_dashboard.html" class="flex items-center gap-6">
+                <img src="images/ВЕКТОР.svg" class="w-14 h-14" alt="Logo">
+                <span class="text-2xl md:text-5xl font-semibold tracking-tighter uppercase">ВЕКТОР</span>
+            </a>
+        </div>
+        <nav class="flex flex-wrap justify-center gap-4 md:gap-12 items-center">
+            <a href="manager_tasks.html" class="nav-item text-m md:text-xl font-light text-[#CC6200]">Все задачи</a>
+            <a href="manager_dashboard.html" class="nav-item text-m md:text-xl font-light hover:text-[#FF9A3C]">Главная</a>
+            <a href="manager_workers.html" class="nav-item text-m md:text-xl font-light hover:text-[#FF9A3C]">Работники</a>
+            <a href="manager_support.html" class="nav-item text-m md:text-xl font-light hover:text-[#FF9A3C]">Техническая поддержка</a>
+        </nav>
+    </header>
+
+    <!-- MAIN -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 px-4 md:px-10 pb-6 lg:flex-1 lg:min-h-0">
+
+        <!-- LEFT: chart -->
+        <div class="lg:col-span-3 flex flex-col gap-4 order-2 lg:order-1 h-auto lg:h-full min-h-0">
+            <div class="bg-[#151515] border border-[#2A2A2A] rounded-[5px] p-5 flex flex-col gap-4 shrink-0">
+                <p class="text-sm font-medium leading-snug text-[#B3B3B3]">Процентное количество<br>выполненных дневных задач</p>
+
+                <!-- Donut -->
+                <div class="flex items-center justify-center py-2">
+                    <div class="relative" style="width:160px;height:160px">
+                        <svg width="160" height="160" viewBox="0 0 160 160" style="transform:rotate(-90deg)">
+                            <!-- Track -->
+                            <circle cx="80" cy="80" r="62" fill="none" stroke="#1F1F1F" stroke-width="16"/>
+                            <!-- Done arc -->
+                            <circle id="donut-done" cx="80" cy="80" r="62" fill="none"
+                                stroke="#22C55E" stroke-width="16"
+                                stroke-linecap="round"
+                                stroke-dasharray="389.6"
+                                stroke-dashoffset="389.6"
+                                class="donut-ring"/>
+                        </svg>
+                        <!-- Center labels -->
+                        <div class="absolute inset-0 flex flex-col items-center justify-center" style="transform:none">
+                            <span id="donut-pct" class="text-2xl font-semibold">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Legend -->
+                <div class="flex flex-col gap-2">
+                    <div class="flex items-center gap-2 text-sm text-[#B3B3B3]">
+                        <span class="w-3 h-3 rounded-full bg-[#1F1F1F] border border-[#3A3A3A] shrink-0"></span>
+                        Невыполнено
+                        <span id="legend-pending" class="ml-auto text-white font-medium">0</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-sm text-[#B3B3B3]">
+                        <span class="w-3 h-3 rounded-full bg-[#22C55E] shrink-0"></span>
+                        Выполнено
+                        <span id="legend-done" class="ml-auto text-white font-medium">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: tasks -->
+        <div class="lg:col-span-9 flex flex-col gap-4 min-h-0 order-1 lg:order-2 h-auto lg:h-full overflow-hidden">
+
+            <!-- Filter -->
+            <div class="flex items-center gap-3 shrink-0">
+                <div class="flex-1 relative">
+                    <input id="filter-input" type="text" class="filter-input w-full pr-10" placeholder="По номеру, имени, исполнителю...">
+                    <svg class="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B6B6B]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Tasks grid -->
+            <div class="flex-1 overflow-y-auto custom-scrollbar min-h-0">
+                <div id="tasks-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3 pr-1"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="scripts/script_manager.js"></script>
+</body>
+</html>

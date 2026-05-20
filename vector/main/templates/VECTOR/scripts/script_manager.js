@@ -240,6 +240,8 @@ function supportChat() {
         }
     }
 }
+document.addEventListener('DOMContentLoaded', () => {
+
     const workers = [
         { id:1, name:'Имя Фамилия', role:'Должность', progress:74, activeTasks:[
             { id:'153', title:'Проверка телефонной связи', status:'В работе', timer:'02:34:55' },
@@ -402,30 +404,32 @@ function supportChat() {
     // ─── RENDER WORKERS GRID ────────────────────────────────────
     const grid = document.getElementById('workers-grid');
 
-    workers.forEach(w => {
-        const task = w.activeTasks[0];
-        const card = document.createElement('div');
-        card.className = 'worker-card';
-        card.onclick = () => openProfile(w.id);
-        card.innerHTML = `
-            <div class="flex items-center gap-3 mb-3">
-                <div class="avatar">ФОТО</div>
-                <div>
-                    <p class="font-semibold text-sm">${w.name}</p>
-                    <p class="text-[11px] text-[#6B6B6B]">${w.role}</p>
+    if (grid) {
+        workers.forEach(w => {
+            const task = w.activeTasks[0];
+            const card = document.createElement('div');
+            card.className = 'worker-card';
+            card.onclick = () => openProfile(w.id);
+            card.innerHTML = `
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="avatar">ФОТО</div>
+                    <div>
+                        <p class="font-semibold text-sm">${w.name}</p>
+                        <p class="text-[11px] text-[#6B6B6B]">${w.role}</p>
+                    </div>
                 </div>
-            </div>
-            <div class="space-y-1 text-xs mb-4">
-                <p><span class="text-[#6B6B6B]">Занятость: </span><span class="text-[#F59E0B]">В работе</span></p>
-                <p><span class="text-[#6B6B6B]">Задача: </span><span class="text-white">№${task ? task.id : '—'}</span></p>
-                ${task ? `<p class="text-[#6B6B6B] text-[10px] truncate">${task.title}</p>` : ''}
-            </div>
-            <button class="w-full py-1.5 text-xs border border-white/10 rounded-[5px] hover:border-[#FF7A00]/40 hover:text-[#FF7A00] transition-colors">
-                Подробнее
-            </button>
-        `;
-        grid.appendChild(card);
-    });
+                <div class="space-y-1 text-xs mb-4">
+                    <p><span class="text-[#6B6B6B]">Занятость: </span><span class="text-[#F59E0B]">В работе</span></p>
+                    <p><span class="text-[#6B6B6B]">Задача: </span><span class="text-white">№${task ? task.id : '—'}</span></p>
+                    ${task ? `<p class="text-[#6B6B6B] text-[10px] truncate">${task.title}</p>` : ''}
+                </div>
+                <button class="w-full py-1.5 text-xs border border-white/10 rounded-[5px] hover:border-[#FF7A00]/40 hover:text-[#FF7A00] transition-colors">
+                    Подробнее
+                </button>
+            `;
+            grid.appendChild(card);
+        });
+    }
 
     // ─── PROFILE OPEN/CLOSE ─────────────────────────────────────
     let currentWorker = null;
@@ -535,7 +539,6 @@ function supportChat() {
         }, 1000);
     }
 
-    // ─── ASSIGN MODAL ───────────────────────────────────────────
     function openAssignModal() {
         openTaskModal();
     }
@@ -545,18 +548,66 @@ function supportChat() {
     function submitAssign() {
         closeAssignModal();
         const toast = document.getElementById('task-toast');
-        toast.classList.add('show');
-        setTimeout(() => toast.classList.remove('show'), 3000);
+        if (toast) {
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
     }
-    document.getElementById('task-modal').addEventListener('click', e => {
-        if (e.target === document.getElementById('task-modal')) closeAssignModal();
-    });
+
+    // Expose functions to global scope so they can be called from inline HTML event handlers
+    window.openProfile = openProfile;
+    window.closeProfile = closeProfile;
+    window.openAssignModal = openAssignModal;
+    window.closeAssignModal = closeAssignModal;
+    window.submitAssign = submitAssign;
+
+    const taskModalEl = document.getElementById('task-modal');
+    if (taskModalEl) {
+        taskModalEl.addEventListener('click', e => {
+            if (e.target === taskModalEl) closeAssignModal();
+        });
+    }
     window.setChatQuery = function (text) {
-    const input = document.getElementById('chat-input');
-    if (input) {
-        input.value = text;
-        input.focus();
+        const input = document.getElementById('chat-input');
+        if (input) {
+            input.value = text;
+            input.focus();
+        }
+    };
+
+    window.sendChat = function () {
+        const input = document.getElementById('chat-input');
+        if (!input) return;
+        const text = input.value.trim();
+        if (!text) return;
+        
+        input.value = '';
+        
+        const toast = document.getElementById('task-toast');
+        if (toast) {
+            const originalText = toast.textContent;
+            toast.textContent = "Сообщение успешно отправлено";
+            toast.classList.remove('opacity-0', 'translate-y-[-20px]', 'pointer-events-none');
+            toast.classList.add('opacity-100', 'translate-y-0');
+            
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-[-20px]', 'pointer-events-none');
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                setTimeout(() => {
+                    toast.textContent = originalText;
+                }, 300);
+            }, 2500);
+        }
+    };
+
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput) {
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                sendChat();
+            }
+        });
     }
-};
+});
 
         

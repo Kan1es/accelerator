@@ -1,5 +1,8 @@
+import logging
 from datetime import datetime, timedelta
 
+import requests
+from django.conf import settings
 from django.utils import timezone
 
 from .models import TaskQueue, EscalationRule, Ticket, Employee, Department, TicketAssignment
@@ -118,21 +121,45 @@ def monitor_deadline(ticket_id):
         ticket.status = "expired"
         ticket.save(update_fields=['status'])
 
-@shared_task
-def feedback_for_ml(ticket_id):
+
+logger = logging.getLogger(__name__)
+
+ML_SERVICE_URL = getattr(settings, 'ML_SERVICE_URL', 'http://ml-service:8000')
+ML_FEEDBACK_TIMEOUT = getattr(settings, 'ML_FEEDBACK_TIMEOUT', 5)
+
+
+@shared_task(
+    bind=True,
+    autoretry_for=(requests.RequestException,),
+    retry_backoff=True,
+    retry_backoff_max=60,
+    retry_jitter=True,
+    max_retries=5,
+    acks_late=True,
+)
+def feedback_for_ml(self, ticket_id: int):
     try:
-        ticket = Ticket.objects.get(id=ticket_id)
+        ticket = Ticket.objects.only('id', 'description', 'category').get(id=ticket_id)
     except Ticket.DoesNotExist:
+        logger.warning("feedback_for_ml: тикет %s не найден", ticket_id)
         return
 
-    ml_payload = {
-        'ticket_id': ticket.id,
-        'description': ticket.description,
-        'actual_category_id': ticket.category_id if ticket.category else None,
-        'final_status': ticket.status,  # 'resolved'
-    }
+    if ticket.category is None:
+        logger.info("feedback_for_ml: у тикета %s нет категории", ticket_id)
+        return
 
-    print(f"ML feedback sent for ticket {ticket_id}")
+    try:
+        response = requests.post(
+            f"{ML_SERVICE_URL}/feedback",
+            json={"text": ticket.description, "true_category_id": ticket.category},
+            timeout=ML_FEEDBACK_TIMEOUT,
+        )
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        logger.warning("feedback_for_ml: ошибка для тикета %s: %s", ticket_id, exc)
+        raise
+
+    logger.info("feedback_for_ml: фидбэк по тикету %s отправлен", ticket_id)
 
 @shared_task
 def check_timeouts():

@@ -11,6 +11,9 @@ from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field
 from transformers import AutoModel, AutoTokenizer
 
+import psycopg
+from psycopg_pool import ConnectionPool
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
@@ -29,7 +32,15 @@ RUBERT_MODEL_NAME = os.getenv("RUBERT_MODEL_NAME", "cointegrated/rubert-tiny2")
 NUM_CLASSES_ENV   = int(os.getenv("NUM_CLASSES", "14"))
 DEVICE_ENV        = os.getenv("DEVICE", "auto")
 INFERENCE_TIMEOUT = float(os.getenv("INFERENCE_TIMEOUT", "30.0"))  # секунды
-
+FEEDBACK_DB_PATH  = os.getenv("FEEDBACK_DB_PATH",  os.path.join(_BASE, "feedback_buffer.db"))
+FEEDBACK_DB_DSN = os.getenv("FEEDBACK_DB_DSN") or (
+    f"host={os.getenv('FEEDBACK_DB_HOST', 'localhost')} "
+    f"port={os.getenv('FEEDBACK_DB_PORT', '5432')} "
+    f"dbname={os.getenv('FEEDBACK_DB_NAME', 'vector')} "
+    f"user={os.getenv('FEEDBACK_DB_USER', 'postgres')} "
+    f"password={os.getenv('FEEDBACK_DB_PASSWORD', 'postgres')}"
+)
+db_pool: ConnectionPool | None = None
 MAX_LENGTH = 512
 
 
@@ -46,6 +57,7 @@ class ModelState:
         self.category_names:  dict[int, str]                = {}
         self.num_classes:     int                           = NUM_CLASSES_ENV
         self.load_error:      str                           = ""
+        self.db_pool: Optional[ConnectionPool] = None
 
     @property
     def is_ready(self) -> bool:
@@ -55,9 +67,12 @@ class ModelState:
         self.bert_model      = None
         self.classifier_head = None
         self.tokenizer       = None
+        if self.db_pool is not None:
+            self.db_pool.close()
+            self.db_pool = None
 
 
-# ─── Вспомогательные функции ─────────────────────────────────────────────────
+        # ─── Вспомогательные функции ─────────────────────────────────────────────────
 
 def _resolve_device() -> torch.device:
     if DEVICE_ENV == "cpu":
@@ -108,6 +123,46 @@ def _load_class_mapping() -> tuple[dict[int, str], dict[int, int], int]:
     )
     return index_to_label, index_to_db_id, n
 
+#Инициализация буфера фитбеков
+
+DDL_FEEDBACK_TABLE = """
+CREATE TABLE IF NOT EXISTS ml_feedback_buffer (
+    id               BIGSERIAL PRIMARY KEY,
+    text             TEXT        NOT NULL,
+    true_category_id INTEGER     NOT NULL,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    is_processed     BOOLEAN     NOT NULL DEFAULT FALSE
+);
+"""
+
+DDL_FEEDBACK_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_ml_feedback_unprocessed
+ON ml_feedback_buffer (is_processed)
+WHERE is_processed = FALSE;
+"""
+
+
+def _safe_dsn(dsn: str) -> str:
+    """Скрывает пароль при логировании DSN."""
+    return " ".join(p for p in dsn.split() if not p.startswith("password=")) + " password=***"
+
+
+def init_feedback_pool() -> ConnectionPool:
+    """Создаёт пул соединений с Postgres и таблицу буфера при первом запуске."""
+    pool = ConnectionPool(
+        conninfo=FEEDBACK_DB_DSN,
+        min_size=1,
+        max_size=5,
+        kwargs={"autocommit": False},
+        open=True,
+    )
+    with pool.connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(DDL_FEEDBACK_TABLE)
+            cur.execute(DDL_FEEDBACK_INDEX)
+        conn.commit()
+    logger.info("Буфер фидбэков готов (Postgres). DSN: %s", _safe_dsn(FEEDBACK_DB_DSN))
+    return pool
 
 # ─── Загрузка модели ─────────────────────────────────────────────────────────
 
@@ -210,8 +265,11 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         state.load_error = str(exc)
         logger.error("Ошибка загрузки модели: %s", exc)
+    try:
+        state.db_pool = init_feedback_pool()
+    except Exception as exc:
+        logger.error("Не удалось инициализировать буфер фидбэков: %s", exc)
 
-    # FIX: храним состояние в app.state — никаких глобальных переменных
     app.state.model = state
 
     yield
@@ -243,6 +301,15 @@ class PredictResponse(BaseModel):
     category_db_id: int
     category_name:  str
     confidence:     float
+
+class FeedbackRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=10_000)
+    true_category_id: int = Field(..., ge=0)
+
+
+class FeedbackResponse(BaseModel):
+    status: str
+    id: int
 
 
 # ─── Inference (синхронная функция для run_in_executor) ───────────────────────
@@ -292,6 +359,7 @@ async def health_check(request: Request):
         "model": RUBERT_MODEL_NAME,
         "num_classes": state.num_classes,
         "device": str(state.device),
+        "feedback_db_ready": state.db_pool is not None,
         "load_error": None,
     }
 
@@ -335,6 +403,41 @@ async def predict(request: PredictRequest, http_request: Request):
         confidence=round(confidence, 4),
     )
 
+@app.post("/feedback", response_model=FeedbackResponse, status_code=201)
+def submit_feedback(payload: FeedbackRequest, http_request: Request):
+    """
+    Принимает пару (text, true_category_id) от Django после завершения тикета
+    и складывает её в Postgres-буфер для последующего дообучения модели.
+
+    Запись неблокирующая: обычный INSERT без инференса или обучения.
+    """
+    state: ModelState = http_request.app.state.model
+
+    if state.db_pool is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Буфер фидбэков недоступен (пул соединений не инициализирован).",
+        )
+
+    try:
+        with state.db_pool.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO ml_feedback_buffer (text, true_category_id) "
+                    "VALUES (%s, %s) RETURNING id",
+                    (payload.text, payload.true_category_id),
+                )
+                new_id = cur.fetchone()[0]
+            conn.commit()
+    except psycopg.Error as exc:
+        logger.exception("Ошибка записи фидбэка в Postgres: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to save feedback") from exc
+
+    logger.info(
+        "Feedback stored: id=%s, true_category_id=%s",
+        new_id, payload.true_category_id,
+    )
+    return FeedbackResponse(status="accepted", id=new_id)
 
 # ─── Локальный запуск ────────────────────────────────────────────────────────
 

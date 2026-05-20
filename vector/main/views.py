@@ -376,7 +376,7 @@ def complete_ticket(request, id):
             active_assignment.is_resolved = True
             active_assignment.save(update_fields=['resolved_time', 'is_resolved'])
 
-    feedback_for_ml.delay(ticket.id)
+    transaction.on_commit(lambda: feedback_for_ml.delay(ticket.id))
 
     auto_assign_from_queue()
 

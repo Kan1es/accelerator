@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-
+import os
 from pathlib import Path
 
 import dotenv
@@ -78,15 +78,14 @@ WSGI_APPLICATION = 'vector.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-info = dotenv.dotenv_values(".env")
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': info['DB'],
-        'USER': info['USER'],
-        'PASSWORD': info['PW'],
-        'HOST':info['HOST'],
-        'PORT': info['PORT'],
+        'NAME':     os.getenv('POSTGRES_DB', 'vector'),
+        'USER':     os.getenv('POSTGRES_USER', 'vector'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'postgres'),
+        'HOST':     os.getenv('POSTGRES_HOST', 'localhost'),
+        'PORT':     os.getenv('POSTGRES_PORT', '5432'),
     }
 }
 
@@ -153,3 +152,9 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+# --- ML Service (FastAPI на порту 8000) ---
+ML_SERVICE_URL = os.getenv('ML_SERVICE_URL', 'http://ml-service:8000')
+ML_FEEDBACK_TIMEOUT = int(os.getenv('ML_FEEDBACK_TIMEOUT', '5'))
+ML_PREDICT_TIMEOUT = int(os.getenv('ML_PREDICT_TIMEOUT', '3'))
+ML_DEFAULT_CATEGORY_ID = int(os.getenv('ML_DEFAULT_CATEGORY_ID', '1'))

@@ -127,11 +127,14 @@ def _load_class_mapping() -> tuple[dict[int, str], dict[int, int], int]:
 
 DDL_FEEDBACK_TABLE = """
 CREATE TABLE IF NOT EXISTS ml_feedback_buffer (
-    id               BIGSERIAL PRIMARY KEY,
-    text             TEXT        NOT NULL,
-    true_category_id INTEGER     NOT NULL,
-    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    is_processed     BOOLEAN     NOT NULL DEFAULT FALSE
+    id                    BIGSERIAL PRIMARY KEY,
+    text                  TEXT        NOT NULL,
+    true_category_id      INTEGER     NOT NULL,
+    predicted_category_id INTEGER,
+    is_correct            BOOLEAN,
+    confidence            REAL,
+    created_at            TIMESTAMP NOT NULL DEFAULT NOW(),
+    is_processed          BOOLEAN     NOT NULL DEFAULT FALSE
 );
 """
 
@@ -311,6 +314,14 @@ class FeedbackResponse(BaseModel):
     status: str
     id: int
 
+class AccuracyStatsResponse(BaseModel):
+    total_samples: int
+    samples_with_prediction: int
+    correct_predictions: int
+    accuracy: float
+    avg_confidence: Optional[float]
+    last_n: int
+
 
 # ─── Inference (синхронная функция для run_in_executor) ───────────────────────
 
@@ -402,42 +413,109 @@ async def predict(request: PredictRequest, http_request: Request):
         category_name=category_name,
         confidence=round(confidence, 4),
     )
-
 @app.post("/feedback", response_model=FeedbackResponse, status_code=201)
-def submit_feedback(payload: FeedbackRequest, http_request: Request):
+async def submit_feedback(payload: FeedbackRequest, http_request: Request):
     """
-    Принимает пару (text, true_category_id) от Django после завершения тикета
-    и складывает её в Postgres-буфер для последующего дообучения модели.
-
-    Запись неблокирующая: обычный INSERT без инференса или обучения.
+    Принимает (text, true_category_id), прогоняет текст через текущую модель
+    и сохраняет в буфер тройку (true, predicted, is_correct) для метрик.
     """
     state: ModelState = http_request.app.state.model
 
     if state.db_pool is None:
-        raise HTTPException(
-            status_code=503,
-            detail="Буфер фидбэков недоступен (пул соединений не инициализирован).",
-        )
+        raise HTTPException(status_code=503, detail="Буфер фидбэков недоступен")
+
+    # Прогоняем модель — если она загружена.
+    predicted_id: Optional[int] = None
+    confidence: Optional[float] = None
+    is_correct: Optional[bool] = None
+
+    if state.is_ready:
+        try:
+            loop = asyncio.get_running_loop()
+            category_index, conf = await asyncio.wait_for(
+                loop.run_in_executor(None, _run_inference, state, payload.text),
+                timeout=INFERENCE_TIMEOUT,
+            )
+            predicted_id = state.index_to_db_id.get(category_index, category_index + 1)
+            confidence = round(conf, 4)
+            is_correct = (predicted_id == payload.true_category_id)
+        except Exception as exc:
+            logger.warning("Не удалось получить предсказание для фидбэка: %s", exc)
 
     try:
         with state.db_pool.connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "INSERT INTO ml_feedback_buffer (text, true_category_id) "
-                    "VALUES (%s, %s) RETURNING id",
-                    (payload.text, payload.true_category_id),
+                    """
+                    INSERT INTO ml_feedback_buffer
+                        (text, true_category_id, predicted_category_id, is_correct, confidence)
+                    VALUES (%s, %s, %s, %s, %s)
+                    RETURNING id
+                    """,
+                    (payload.text, payload.true_category_id, predicted_id, is_correct, confidence),
                 )
                 new_id = cur.fetchone()[0]
             conn.commit()
     except psycopg.Error as exc:
-        logger.exception("Ошибка записи фидбэка в Postgres: %s", exc)
+        logger.exception("Ошибка записи фидбэка: %s", exc)
         raise HTTPException(status_code=500, detail="Failed to save feedback") from exc
 
     logger.info(
-        "Feedback stored: id=%s, true_category_id=%s",
-        new_id, payload.true_category_id,
+        "Feedback stored: id=%s, true=%s, predicted=%s, correct=%s",
+        new_id, payload.true_category_id, predicted_id, is_correct,
     )
     return FeedbackResponse(status="accepted", id=new_id)
+
+
+@app.get("/stats/accuracy", response_model=AccuracyStatsResponse)
+def stats_accuracy(http_request: Request, last_n: int = 100):
+    """
+    Возвращает метрики точности модели по последним `last_n` записям буфера.
+    """
+    state: ModelState = http_request.app.state.model
+
+    if state.db_pool is None:
+        raise HTTPException(status_code=503, detail="Буфер фидбэков недоступен")
+
+    if last_n < 1:
+        last_n = 100
+    if last_n > 10_000:
+        last_n = 10_000
+
+    try:
+        with state.db_pool.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT
+                        COUNT(*)                                              AS total,
+                        COUNT(predicted_category_id)                          AS with_pred,
+                        COUNT(*) FILTER (WHERE is_correct IS TRUE)            AS correct,
+                        AVG(confidence) FILTER (WHERE confidence IS NOT NULL) AS avg_conf
+                    FROM (
+                        SELECT predicted_category_id, is_correct, confidence
+                        FROM ml_feedback_buffer
+                        ORDER BY id DESC
+                        LIMIT %s
+                    ) sub
+                    """,
+                    (last_n,),
+                )
+                total, with_pred, correct, avg_conf = cur.fetchone()
+    except psycopg.Error as exc:
+        logger.exception("Ошибка чтения статистики: %s", exc)
+        raise HTTPException(status_code=500, detail="Failed to read stats") from exc
+
+    accuracy = (correct / with_pred) if with_pred else 0.0
+
+    return AccuracyStatsResponse(
+        total_samples=total,
+        samples_with_prediction=with_pred,
+        correct_predictions=correct,
+        accuracy=round(accuracy, 4),
+        avg_confidence=round(float(avg_conf), 4) if avg_conf is not None else None,
+        last_n=last_n,
+    )
 
 # ─── Локальный запуск ────────────────────────────────────────────────────────
 

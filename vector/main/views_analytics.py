@@ -10,10 +10,11 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
 from .models import Ticket, Employee, Department, TicketAssignment, TaskQueue, EscalationRule, Category
-from .serializers import ErrorResponseSerializer, AnaliticsResponseSerializer, AvgResponseSerializer, EscalationSerializer, CategorySerializer, ClassificatorSerializator
+from .serializers import ErrorResponseSerializer, AnaliticsResponseSerializer, AvgResponseSerializer, \
+    EscalationSerializer, CategorySerializer, ClassificatorSerializator, MLAccuracySerializer
 from django.db.models import Count, Q
 
-from .services.ml_client import classify_text
+from .services.ml_client import classify_text, fetch_ml_accuracy
 from .services.queue_service import push_to_queue
 
 
@@ -345,3 +346,40 @@ def classificate_and_create_ticket(request):
     }
     serializer = ClassificatorSerializator(result)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@swagger_auto_schema(
+    method='get',
+    operation_description="Метрики точности ML-модели (accuracy по последним N примерам). "
+                          "Проксирует вызов к /stats/accuracy ML-сервиса. "
+                          "Параметр запроса: last_n (по умолчанию 100, максимум 10000).",
+    responses={
+        200: MLAccuracySerializer(),
+        503: ErrorResponseSerializer(),
+    },
+    tags=['Analytics']
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def ml_accuracy(request):
+    try:
+        last_n = int(request.query_params.get('last_n', 100))
+    except (TypeError, ValueError):
+        last_n = 100
+
+    if last_n < 1 or last_n > 10_000:
+        return Response(
+            {'error': 'last_n должен быть в диапазоне [1, 10000]'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    data = fetch_ml_accuracy(last_n=last_n)
+
+    if data.get('available') is False:
+        return Response(
+            {'error': f"ML-сервис недоступен: {data.get('error', 'unknown')}"},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    serializer = MLAccuracySerializer(data)
+    return Response(serializer.data, status=status.HTTP_200_OK)

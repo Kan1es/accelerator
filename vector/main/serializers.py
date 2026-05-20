@@ -114,3 +114,11 @@ class AnaliticsResponseSerializer(serializers.Serializer):
     group_name = serializers.CharField()
     completed_today = serializers.IntegerField()
     completed_week = serializers.IntegerField()
+
+class MLAccuracySerializer(serializers.Serializer):
+    total_samples = serializers.IntegerField()
+    samples_with_prediction = serializers.IntegerField()
+    correct_predictions = serializers.IntegerField()
+    accuracy = serializers.FloatField()
+    avg_confidence = serializers.FloatField(allow_null=True)
+    last_n = serializers.IntegerField()

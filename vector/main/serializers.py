@@ -34,7 +34,7 @@ class ShiftStartResponseSerializer(serializers.Serializer):
 class ShiftEndResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
     shift_end_time = serializers.DateTimeField()
-    worked_seconds = serializers.IntegerField()
+    shift_time = serializers.IntegerField()
 
 class ErrorResponseSerializer(serializers.Serializer):
     error = serializers.CharField()

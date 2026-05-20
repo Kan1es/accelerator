@@ -1,5 +1,7 @@
 from ..models import TicketAssignment, Ticket, Employee, TaskQueue
+from ..utils import auto_assign_from_queue
 from django.utils import timezone
+
 
 def push_to_queue(ticket, priority):
     department = ticket.creator.department if ticket.creator else None
@@ -17,10 +19,11 @@ def push_to_queue(ticket, priority):
     )
     return TaskQueue_new
 
+
 def assign_ticket_to_employee(ticket, employee):
     if not employee.is_active:
         raise ValueError(f"Сотрудник - {employee.name} не активен")
-    
+
     status_lower = (ticket.status or '').lower()
     if status_lower == 'assigned':
         raise ValueError(f"Тикет {ticket.description} уже назначен")
@@ -32,7 +35,7 @@ def assign_ticket_to_employee(ticket, employee):
     ticket.assignee = employee
     ticket.status = 'assigned'
     ticket.save(update_fields=['assignee', 'status'])
-    
+
     assigner = ticket.creator
     employee.is_busy = True
     employee.save(update_fields=['is_busy'])
@@ -42,24 +45,7 @@ def assign_ticket_to_employee(ticket, employee):
         assignee=employee,
         assigner=assigner,
         assigned_time=timezone.now(),
-        resolved_time=None,  # resolved_time не может быть равен дедлайну при создании назначения
+        resolved_time=None,
         is_resolved=False
     )
     return assignment
-
-def auto_assign_from_queue():
-    tickets = Ticket.objects.filter(status='open').order_by('-priority')
-
-    for ticket in tickets:
-        department = None
-        if ticket.category and ticket.category.default_department:
-            department = ticket.category.default_department
-        elif ticket.creator and ticket.creator.department:
-            department = ticket.creator.department
-            
-        if not department:
-            continue
-
-        free_employee = Employee.objects.filter(is_active=True, department=department, is_busy=False).first()
-        if free_employee:
-            assign_ticket_to_employee(ticket, free_employee)

@@ -63,7 +63,7 @@ class Ticket(models.Model):
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
     priority = models.IntegerField()
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='open')
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
     creator = models.ForeignKey(Employee, related_name='created_tickets', on_delete=models.SET_NULL, null=True, blank=True)
     assignee = models.ForeignKey(Employee, related_name='assigned_tickets', on_delete=models.SET_NULL, null=True, blank=True)
     deadline = models.DateTimeField(null=True, blank=True)
@@ -87,7 +87,7 @@ class TaskQueue(models.Model):
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
     priority = models.IntegerField()
     wait_start_time = models.DateTimeField()
-    assigned_time = models.DateTimeField()
+    assigned_time = models.DateTimeField(null=True, blank=True)
     is_activated = models.BooleanField(default=True)
 
 class Notification(models.Model):

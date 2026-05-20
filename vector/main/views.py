@@ -272,8 +272,8 @@ def decline_ticket(request, id):
             open_assignment.save(update_fields=['resolved_time', 'is_resolved'])
 
         department = None
-        if ticket.category and ticket.category.default_department:
-            department = ticket.category.default_department
+        if ticket.category and ticket.category.department:
+            department = ticket.category.department
         if not department and employee.department:
             department = employee.department
 
@@ -282,7 +282,7 @@ def decline_ticket(request, id):
             department=department,
             priority=ticket.priority,
             wait_start_time=timezone.now(),
-            assigned_time=timezone.now(),  # или None, но поле not null
+            assigned_time=timezone.now(),
             is_activated=True
         )
 
@@ -386,6 +386,3 @@ def complete_ticket(request, id):
         },
         status=status.HTTP_200_OK
     )
-
-
-

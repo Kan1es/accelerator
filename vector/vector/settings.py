@@ -13,8 +13,7 @@ import os
 from pathlib import Path
 
 import dotenv
-info = dotenv.dotenv_values(".env")
-from django.conf.global_settings import SECRET_KEY
+info = dotenv.dotenv_values(Path(__file__).resolve().parent.parent / ".env")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -37,6 +36,10 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     'main',
     'channels',
+    'rest_framework',
+    'drf_yasg',
+    'corsheaders',
+    'django_celery_beat',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

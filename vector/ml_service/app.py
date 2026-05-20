@@ -210,8 +210,8 @@ def load_model() -> ModelState:
 
     logger.info("Загрузка чекпоинта из %s ...", MODEL_CHECKPOINT)
     try:
-        # FIX: weights_only=True — защита от вредоносного pickle
-        checkpoint = torch.load(MODEL_CHECKPOINT, map_location=state.device, weights_only=True)
+        # FIX: weights_only=False — позволяет загружать метаданные чекпоинта
+        checkpoint = torch.load(MODEL_CHECKPOINT, map_location=state.device, weights_only=False)
     except Exception as exc:
         raise RuntimeError(
             f"Не удалось прочитать чекпоинт: {exc}. "

@@ -58,7 +58,7 @@ def feedback_for_ml(self, ticket_id: int):
     try:
         response = requests.post(
             f"{ML_SERVICE_URL}/feedback",
-            json={"text": ticket.description, "true_category_id": ticket.category},
+            json={"text": ticket.description, "true_category_id": ticket.category_id},
             timeout=ML_FEEDBACK_TIMEOUT,
         )
         response.raise_for_status()
@@ -77,15 +77,14 @@ def check_timeouts():
     )
     count = expired_tickets.count()
     if count:
-        expired_tickets.update(status='expired')
-
-        for ticket in expired_tickets:
+        for ticket in list(expired_tickets.select_related('assignee')):
             if ticket.assignee:
                 notification(
                     ticket.assignee,
                     'Тикет просрочен',
                     f'Тикет #{ticket.id} "{ticket.description[:50]}" просрочен.'
                 )
+        expired_tickets.update(status='expired')
     return f'Checked timeouts: {count} tickets marked as expired'
 
 @shared_task
@@ -99,12 +98,15 @@ def cleanup_end_of_day():
     )
     deleted_queue = old_queue.count()
     old_queue.delete()
+    
     old_tickets = Ticket.objects.filter(
         status__in=['closed', 'expired', 'resolved'],
-        updated_at__lt=threshold
+        created_at__lt=threshold
     )
+    deleted_tickets = old_tickets.count()
+    old_tickets.delete()
 
-    return f'Cleanup: deleted {deleted_queue} old queue entries'
+    return f'Cleanup: deleted {deleted_queue} old queue entries and {deleted_tickets} old tickets'
 
 @shared_task
 def remind_last_employee():

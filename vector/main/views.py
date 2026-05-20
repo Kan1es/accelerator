@@ -272,10 +272,8 @@ def decline_ticket(request, id):
             open_assignment.save(update_fields=['resolved_time', 'is_resolved'])
 
         department = None
-        if ticket.category and hasattr(ticket.category, 'department'):
-            department = ticket.category.department
-        if not department and ticket.assignee:  # fallback
-            department = ticket.assignee.department
+        if ticket.category and ticket.category.default_department:
+            department = ticket.category.default_department
         if not department and employee.department:
             department = employee.department
 

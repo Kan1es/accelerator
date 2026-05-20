@@ -138,6 +138,9 @@ def avg_time(request):
                 'time' : avg
             })
 
+    if not temp_dep_time:
+        return Response([], status=status.HTTP_200_OK)
+
     temp_dep_time.sort(key = lambda n: n['department'])
     current_department = temp_dep_time[0]['department']
     current_time = []
@@ -145,8 +148,8 @@ def avg_time(request):
         if data['department'] != current_department:
             avg_time = sum(current_time) / len(current_time) if current_time else 0
             result.append({
-                'department': current_department,
-                'avg_wait_seconds': avg_time
+                'department_name': current_department,
+                'avg_response_time_seconds': avg_time
             })
             current_department = data['department']
             current_time = [data['time']]
@@ -154,8 +157,8 @@ def avg_time(request):
             current_time.append(data['time'])
     avg_time = sum(current_time) / len(current_time) if current_time else 0
     result.append({
-        'department': current_department,
-        'avg_wait_seconds': avg_time
+        'department_name': current_department,
+        'avg_response_time_seconds': avg_time
     })
 
     serializer = AvgResponseSerializer(result, many = True)
@@ -186,11 +189,10 @@ def escalation_analytics(request):
             if ticket.status == 'open' and ticket.deadline < now:
                 ticket_escalations['waiting_timeout'] += 1
 
-            elif ticket.status in ['assigned', 'in_progress'] and ticket.deadline > now:
+            elif ticket.status in ['assigned', 'in_progress'] and ticket.deadline < now:
                 ticket_escalations['execution_timeout'] += 1
         else:
             continue
-    # deadline - None, будет ошибка. Также проверить на пустую строчку
 
     task_queue_escalations = {
         'waiting_timeout' : 0,
@@ -203,12 +205,9 @@ def escalation_analytics(request):
         rule = EscalationRule.objects.filter(category=task.ticket.category).first()
         if not rule:
             continue
-        time_limit = timedelta(seconds=rule.time_limit)
+        time_limit = timedelta(minutes=rule.time_limit) # time_limit задается в минутах по справке модели
         if task.is_activated and (task.wait_start_time + time_limit) < now:
             task_queue_escalations['waiting_timeout'] += 1
-        elif task.is_activated and (task.wait_start_time + time_limit) > now:
-            task_queue_escalations['execution_timeout'] += 1
-    #Аналогично, выше была ошибка
 
     result = {
         'tickets' : {
@@ -236,17 +235,26 @@ def escalation_analytics(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def category_counter_tickets(request):
-    start_time = request.query_params.get('start_date')
-    end_time = request.query_params.get('end_date')
+    start_str = request.query_params.get('start_date')
+    end_str = request.query_params.get('end_date')
 
-    if not start_time or not end_time or start_time > end_time:
-        return Response({'error': 'Неверный ввод даныых'}, status=status.HTTP_400_BAD_REQUEST)
+    if not start_str or not end_str:
+        return Response({'error': 'Параметры start_date и end_date обязательны'}, status=status.HTTP_400_BAD_REQUEST)
 
-    tickets = Ticket.objects.filter(created_at__range=[start_time, end_time])
+    try:
+        start_time = timezone.make_aware(datetime.fromisoformat(start_str.replace('Z', '+00:00')))
+        end_time = timezone.make_aware(datetime.fromisoformat(end_str.replace('Z', '+00:00')))
+    except ValueError:
+        return Response({'error': 'Неверный формат даты. Используйте ISO формат (YYYY-MM-DD)'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if start_time > end_time:
+        return Response({'error': 'Неверный ввод данных: начальная дата больше конечной'}, status=status.HTTP_400_BAD_REQUEST)
+
+    tickets = Ticket.objects.filter(created_at__range=[start_time, end_time]).select_related('category')
 
     category_counts = {}
     for ticket in tickets:
-        category = ticket.category.name
+        category = ticket.category.name if ticket.category else 'Без категории'
         if category in category_counts:
             category_counts[category] += 1
         else:

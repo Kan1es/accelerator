@@ -1,7 +1,11 @@
 import os
 import requests
 import dotenv
+import logging
 from pathlib import Path
+from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 dotenv.load_dotenv(BASE_DIR / ".env")

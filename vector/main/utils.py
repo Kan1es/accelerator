@@ -1,8 +1,8 @@
 from asgiref.sync import async_to_sync
 from django.utils import timezone
 
-from vector.main.consumers import NotificationConsumer
-from vector.main.models import Notification, TaskQueue, Employee, TicketAssignment
+from .consumers import NotificationConsumer
+from .models import Notification, TaskQueue, Employee, TicketAssignment
 
 
 def notification(employee, title, message, link=None):
@@ -10,8 +10,7 @@ def notification(employee, title, message, link=None):
         recipient=employee,
         title=title,
         message=message,
-        link=link,
-        created_at=timezone.now()
+        link=link
     )
 
 def auto_assign_from_queue():
@@ -20,11 +19,12 @@ def auto_assign_from_queue():
         available_employee = Employee.objects.filter(department=entry.department, is_busy=False, is_active=True).first()
         if available_employee:
             ticket = entry.ticket
-            send_websocket_notification(
-                user_id=available_employee.user.id,
-                notification_type='ticket_assigned',
-                data={'ticket_id': ticket.id, 'message': f'Вам назначен тикет #{ticket.id}'}
-            )
+            if available_employee.user:
+                send_websocket_notification(
+                    user_id=available_employee.user.id,
+                    notification_type='ticket_assigned',
+                    data={'ticket_id': ticket.id, 'message': f'Вам назначен тикет #{ticket.id}'}
+                )
             ticket.assignee = available_employee
             ticket.status = 'assigned'
             ticket.save(update_fields=['assignee', 'status'])
@@ -40,14 +40,18 @@ def auto_assign_from_queue():
             available_employee.is_busy = True
             available_employee.save(update_fields=['is_busy'])
             break
+
 def notify_manager(department, ticket):
-    manager = Employee.objects.filter(department=department, is_active=True).order_by('-role__power').first()
+    manager = Employee.objects.filter(department=department, is_active=True).first()
     if manager:
+        ticket_id = ticket.id if ticket else "N/A"
+        ticket_desc = ticket.description[:100] if ticket else "без описания"
+        ticket_priority = ticket.priority if ticket else "N/A"
         notification(
             employee=manager,
-            title=f'Тикет #{ticket.id} отклонён',
-            message=f'Тикет "{ticket.description[:100]}" был отклонён исполнителем. Приоритет повышен до {ticket.priority}.',
-            link=f'/tickets/{ticket.id}/'
+            title=f'Тикет #{ticket_id} отклонён' if ticket else 'Рабочая смена завершена раньше времени',
+            message=f'Тикет "{ticket_desc}" был отклонён исполнителем. Приоритет повышен до {ticket_priority}.' if ticket else 'Сотрудник завершил смену, отработав менее 8 часов.',
+            link=f'/tickets/{ticket_id}/' if ticket else None
         )
 
 def send_websocket_notification(user_id, notification_type, data):

@@ -1,7 +1,6 @@
 from django.urls import path
-from vector import settings
 from .views import shift_start, shift_end, employee_status, accept_ticket, decline_ticket, complete_ticket
-from .views_analytics import ml_accuracy
+from .views_analytics import ml_accuracy, analitic_agregation, avg_time, escalation_analytics, category_counter_tickets, classificate_and_create_ticket
 from .views_mobile import mobile_employees_list, mobile_tickets_list, mobile_notify_employee, mobile_predict
 
 urlpatterns = [
@@ -15,5 +14,12 @@ urlpatterns = [
     path('api/mobile/tickets/', mobile_tickets_list, name='mobile-tickets-list'),
     path('api/mobile/notify/<int:employee_id>/', mobile_notify_employee, name='mobile-notify-employee'),
     path('api/mobile/predict/', mobile_predict, name='mobile-predict'),
+    
+    # Analytics & AI Agent
     path('analytics/ml_accuracy/', ml_accuracy, name='ml-accuracy'),
+    path('analytics/aggregation/', analitic_agregation, name='analytics-aggregation'),
+    path('analytics/avg_time/', avg_time, name='analytics-avg-time'),
+    path('analytics/escalations/', escalation_analytics, name='analytics-escalations'),
+    path('analytics/categories/', category_counter_tickets, name='analytics-categories'),
+    path('api/agent/classify/', classificate_and_create_ticket, name='agent-classify-create'),
 ]

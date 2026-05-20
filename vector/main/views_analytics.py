@@ -16,7 +16,7 @@ from django.db.models import Count, Q
 
 from .services.ml_client import classify_text, fetch_ml_accuracy
 from .services.queue_service import push_to_queue
-
+from django.db import transaction
 
 @swagger_auto_schema(
     method='get',
@@ -43,7 +43,6 @@ def analitic_agregation(request):
     day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     week_start = day_start - timedelta(days=7)
 
-    # «Время закрытия тикета» = TicketAssignment.resolved_time
     completed_statuses = ('resolved', 'closed')
 
     result = []
@@ -80,7 +79,6 @@ def analitic_agregation(request):
             })
 
     else:
-        # Путь до назначений: department -> employee -> assignments_received -> ticket
         rows = (
             Department.objects
             .annotate(
@@ -146,19 +144,19 @@ def avg_time(request):
     current_time = []
     for data in temp_dep_time:
         if data['department'] != current_department:
-            avg_time = sum(current_time) / len(current_time) if current_time else 0
+            avg_seconds = sum(current_time) / len(current_time) if current_time else 0
             result.append({
                 'department_name': current_department,
-                'avg_response_time_seconds': avg_time
+                'avg_response_time_seconds': avg_seconds
             })
             current_department = data['department']
             current_time = [data['time']]
         else:
             current_time.append(data['time'])
-    avg_time = sum(current_time) / len(current_time) if current_time else 0
+    avg_seconds = sum(current_time) / len(current_time) if current_time else 0
     result.append({
         'department_name': current_department,
-        'avg_response_time_seconds': avg_time
+        'avg_response_time_seconds': avg_seconds
     })
 
     serializer = AvgResponseSerializer(result, many = True)
@@ -242,8 +240,8 @@ def category_counter_tickets(request):
         return Response({'error': 'Параметры start_date и end_date обязательны'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
-        start_time = timezone.make_aware(datetime.fromisoformat(start_str.replace('Z', '+00:00')))
-        end_time = timezone.make_aware(datetime.fromisoformat(end_str.replace('Z', '+00:00')))
+        start_time = datetime.fromisoformat(start_str.replace('Z', '+00:00'))
+        end_time = datetime.fromisoformat(end_str.replace('Z', '+00:00'))
     except ValueError:
         return Response({'error': 'Неверный формат даты. Используйте ISO формат (YYYY-MM-DD)'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -272,14 +270,6 @@ def category_counter_tickets(request):
         )
     serializer = CategorySerializer(result, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-# код ниже я не знаю куда пихать. Обозначил его на канбан доске голубым(не натурал, получается). И закинул в тестирование
-# импорты в начале файла:
-# from django.db import transaction
-# from .models import Category
-# from .services.ml_client import classify_text
-# from .services.queue_service import push_to_queue
 
 DEFAULT_PRIORITY = 5
 
@@ -312,9 +302,6 @@ def classificate_and_create_ticket(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    # 1) Классифицируем текст через ML-сервис.
-    # classify_text сам делает fallback на ML_DEFAULT_CATEGORY_ID и confidence=0.0
-    # при недоступности сервиса (см. main/services/ml_client.py).
     category_id, confidence = classify_text(text)
 
     try:
@@ -325,7 +312,6 @@ def classificate_and_create_ticket(request):
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 
-    # 2) Считаем deadline В МИНУТАХ.
     escalation_rule = EscalationRule.objects.filter(category=category).first()
     now = timezone.now()
     if escalation_rule and escalation_rule.time_limit:
@@ -333,7 +319,6 @@ def classificate_and_create_ticket(request):
     else:
         deadline = None
 
-    # 3) Создаём тикет и помещаем в очередь — одной транзакцией
     with transaction.atomic():
         new_ticket = Ticket.objects.create(
             description=text,
@@ -346,7 +331,6 @@ def classificate_and_create_ticket(request):
         )
         push_to_queue(new_ticket, priority=new_ticket.priority)
 
-    # 4) Ответ клиенту
     result = {
         'category': category.name,
         'confidence': round(confidence, 4),

@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta
+
+from django.db import transaction
 from django.shortcuts import render
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.decorators import api_view, permission_classes
@@ -7,51 +9,109 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
-from .models import Ticket, Employee, Department, TicketAssignment, TaskQueue, EscalationRule
+from .models import Ticket, Employee, Department, TicketAssignment, TaskQueue, EscalationRule, Category
 from .serializers import ErrorResponseSerializer, AnaliticsResponseSerializer, AvgResponseSerializer, EscalationSerializer, CategorySerializer, ClassificatorSerializator
+from django.db.models import Count, Q
 
-# @swagger_auto_schema(
-#     method='get',
-#     operation_description="Получить аналитику по завершённым тикетам за сегодня и неделю",
-#     responses={
-#         200: AnaliticsResponseSerializer(),
-#         400: ErrorResponseSerializer()
-#     },
-#     tags=['Analytics']
-# )
-# @api_view(['GET'])
-# @permission_classes([IsAuthenticated])
-# def analitic_agregation(request):
-#     employee_department_group = request.query_params.get('group_by')
-#     if employee_department_group not in ['employee', 'department']:
-#         return Response({'error': 'неверный параметр ввода для агрегации(employee or department)'},
-#                         status=status.HTTP_400_BAD_REQUEST)
-#
-#     now = datetime.now()
-#     day_time = datetime(now.year, now.month, now.day)
-#     week_time = day_time - timedelta(days=7)
-#
-#     ticket_completed = Ticket.objects.filter(status = 'resolved') | Ticket.objects.filter(status = 'closed')
-#     result = []
-#
-#     if employee_department_group == 'employee':
-#         employeers = Employee.objects.all()
-#         for employee in employeers:
-#             ticket_today = ticket_completed.filter()
-#             #где брать время закрытия тикета?
-#
-#     else:
-#         departments = Department.objects.all()
-#         for department in departments:
-#
-#
-#     data = {
-#         'result for:': employee_department_group,
-#         'fields': result
-#     }
-#
-#     serializer = AnaliticsResponseSerializer(data, many = True)
-#     return Response(serializer.data, status=status.HTTP_200_OK)
+from .services.ml_client import classify_text
+from .services.queue_service import push_to_queue
+
+
+@swagger_auto_schema(
+    method='get',
+    operation_description="Аналитика по завершённым тикетам за сегодня и неделю, "
+                          "сгруппированная по сотруднику или отделу. "
+                          "Параметр запроса: group_by=employee|department",
+    responses={
+        200: AnaliticsResponseSerializer(many=True),
+        400: ErrorResponseSerializer(),
+    },
+    tags=['Analytics']
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def analitic_agregation(request):
+    group_by = request.query_params.get('group_by')
+    if group_by not in ('employee', 'department'):
+        return Response(
+            {'error': "Параметр group_by обязателен и должен быть 'employee' или 'department'"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    now = timezone.now()
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = day_start - timedelta(days=7)
+
+    # «Время закрытия тикета» = TicketAssignment.resolved_time
+    completed_statuses = ('resolved', 'closed')
+
+    result = []
+
+    if group_by == 'employee':
+        rows = (
+            Employee.objects
+            .annotate(
+                completed_today=Count(
+                    'assignments_received',
+                    filter=Q(
+                        assignments_received__is_resolved=True,
+                        assignments_received__resolved_time__gte=day_start,
+                        assignments_received__ticket__status__in=completed_statuses,
+                    ),
+                ),
+                completed_week=Count(
+                    'assignments_received',
+                    filter=Q(
+                        assignments_received__is_resolved=True,
+                        assignments_received__resolved_time__gte=week_start,
+                        assignments_received__ticket__status__in=completed_statuses,
+                    ),
+                ),
+            )
+            .values('id', 'name', 'completed_today', 'completed_week')
+        )
+        for row in rows:
+            result.append({
+                'group_id': row['id'],
+                'group_name': row['name'],
+                'completed_today': row['completed_today'],
+                'completed_week': row['completed_week'],
+            })
+
+    else:
+        # Путь до назначений: department -> employee -> assignments_received -> ticket
+        rows = (
+            Department.objects
+            .annotate(
+                completed_today=Count(
+                    'employee__assignments_received',
+                    filter=Q(
+                        employee__assignments_received__is_resolved=True,
+                        employee__assignments_received__resolved_time__gte=day_start,
+                        employee__assignments_received__ticket__status__in=completed_statuses,
+                    ),
+                ),
+                completed_week=Count(
+                    'employee__assignments_received',
+                    filter=Q(
+                        employee__assignments_received__is_resolved=True,
+                        employee__assignments_received__resolved_time__gte=week_start,
+                        employee__assignments_received__ticket__status__in=completed_statuses,
+                    ),
+                ),
+            )
+            .values('id', 'name', 'completed_today', 'completed_week')
+        )
+        for row in rows:
+            result.append({
+                'group_id': row['id'],
+                'group_name': row['name'],
+                'completed_today': row['completed_today'],
+                'completed_week': row['completed_week'],
+            })
+
+    serializer = AnaliticsResponseSerializer(result, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 @swagger_auto_schema(
     method='get',
@@ -206,42 +266,82 @@ def category_counter_tickets(request):
 
 
 # код ниже я не знаю куда пихать. Обозначил его на канбан доске голубым(не натурал, получается). И закинул в тестирование
+# импорты в начале файла:
+# from django.db import transaction
+# from .models import Category
+# from .services.ml_client import classify_text
+# from .services.queue_service import push_to_queue
+
+DEFAULT_PRIORITY = 5
+
 
 @swagger_auto_schema(
-    method='get',
-    operation_description="Создание тикета через чат",
+    method='post',
+    operation_description="Создание тикета через чат-агента: текст обращения "
+                          "классифицируется ML-сервисом, тикет создаётся и помещается в очередь.",
     responses={
-        200: ClassificatorSerializator(),
-        400: ErrorResponseSerializer()
+        201: ClassificatorSerializator(),
+        400: ErrorResponseSerializer(),
+        503: ErrorResponseSerializer(),
     },
-    tags=['Analytics']
+    tags=['Agent']
 )
-@api_view(['GET'])
+@api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def classificate_and_create_ticket(request):
-    text = request.data.get('text')
-    category = text.get('category')
-    employee = request.user.employee
+    text = (request.data.get('text') or '').strip()
+    if not text:
+        return Response(
+            {'error': 'Поле text обязательно и не может быть пустым'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    try:
+        employee = request.user.employee
+    except (AttributeError, Employee.DoesNotExist):
+        return Response(
+            {'error': 'Пользователь не привязан к сотруднику'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
-    processed_text = classify_text(text) # такой функции еще нет, нужен фильтр блума
-    escalation_rule = EscalationRule.objects.filter(category_id=category).first()
-    new_ticket = Ticket.objects.create(
-        description = processed_text,
-        category = category, #прописано в тз category_id но такого поля нет
-        priority = , #какой у нас средний по умолчанию приоритет?
-        deadline = escalation_rule.time_limit,
-        status = 'open',
-        creator = employee,
-        created_at = datetime.now()
-    )
+    # 1) Классифицируем текст через ML-сервис.
+    # classify_text сам делает fallback на ML_DEFAULT_CATEGORY_ID и confidence=0.0
+    # при недоступности сервиса (см. main/services/ml_client.py).
+    category_id, confidence = classify_text(text)
 
-    push_to_queue(new_ticket, priority=new_ticket.priority)
+    try:
+        category = Category.objects.get(id=category_id)
+    except Category.DoesNotExist:
+        return Response(
+            {'error': f'Категория id={category_id} не найдена в БД'},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
 
+    # 2) Считаем deadline В МИНУТАХ.
+    escalation_rule = EscalationRule.objects.filter(category=category).first()
+    now = timezone.now()
+    if escalation_rule and escalation_rule.time_limit:
+        deadline = now + timedelta(minutes=escalation_rule.time_limit)
+    else:
+        deadline = None
+
+    # 3) Создаём тикет и помещаем в очередь — одной транзакцией
+    with transaction.atomic():
+        new_ticket = Ticket.objects.create(
+            description=text,
+            category=category,
+            priority=DEFAULT_PRIORITY,
+            status='open',
+            created_at=now,
+            creator=employee,
+            deadline=deadline,
+        )
+        push_to_queue(new_ticket, priority=new_ticket.priority)
+
+    # 4) Ответ клиенту
     result = {
-        'category': new_ticket.category.name,
-        # 'confidence': confidence,     откуда мы получаем confindece?
-        'ticket_id': new_ticket.id
+        'category': category.name,
+        'confidence': round(confidence, 4),
+        'ticket_id': new_ticket.id,
     }
-
     serializer = ClassificatorSerializator(result)
-    return Response(serializer.data, status=status.HTTP_200_OK)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)

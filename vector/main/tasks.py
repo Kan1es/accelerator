@@ -117,9 +117,13 @@ def monitor_deadline(ticket_id):
     except Ticket.DoesNotExist:
         return
 
+    if ticket.deadline is None:
+        return
+
     if ticket.status == "in_progress" and ticket.deadline < timezone.now():
         ticket.status = "expired"
         ticket.save(update_fields=['status'])
+
 
 
 logger = logging.getLogger(__name__)

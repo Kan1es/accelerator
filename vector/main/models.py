@@ -48,7 +48,7 @@ class EscalationRule(models.Model):
     time_limit = models.IntegerField(help_text="Time limit in minutes")
 
     def __str__(self):
-        return f"Rule {self.id} for Category {self.category_id}"
+        return f"Rule {self.id} for Category {self.category}"
 
 class Ticket(models.Model):
     STATUS_CHOICES = [
@@ -80,7 +80,7 @@ class TicketAssignment(models.Model):
     is_resolved = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"Assignment {self.id} for Ticket {self.ticket_id}"
+        return f"Assignment {self.id} for Ticket {self.ticket}"
 
 class TaskQueue(models.Model):
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE)

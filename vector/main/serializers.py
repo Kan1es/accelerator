@@ -49,9 +49,6 @@ class ItemSerializer(serializers.Serializer):
     tickets_today = serializers.IntegerField()
     tickets_week = serializers.IntegerField()
 
-class AnaliticsResponseSerializer(serializers.Serializer):
-    group_by = serializers.CharField()
-    data = ItemSerializer()
 
 class AvgResponseSerializer(serializers.Serializer):
     department_name = serializers.CharField()
@@ -110,3 +107,10 @@ class ClassificatorSerializator(serializers.Serializer):
     category = serializers.CharField()
     confidence = serializers.FloatField()
     ticket_id = serializers.IntegerField()
+
+
+class AnaliticsResponseSerializer(serializers.Serializer):
+    group_id = serializers.IntegerField()
+    group_name = serializers.CharField()
+    completed_today = serializers.IntegerField()
+    completed_week = serializers.IntegerField()

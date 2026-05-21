@@ -90,8 +90,12 @@ class MobileTicketSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     status = serializers.CharField()
     description = serializers.CharField()
+    assignee_id = serializers.IntegerField(allow_null=True, required=False)
     assignee_name = serializers.CharField(allow_null=True)
     priority = serializers.IntegerField()
+    category_name = serializers.CharField(allow_null=True, required=False)
+    created_at = serializers.CharField(allow_null=True, required=False)
+    deadline = serializers.CharField(allow_null=True, required=False)
 
 class SuccessResponseSerializer(serializers.Serializer):
     status = serializers.CharField()

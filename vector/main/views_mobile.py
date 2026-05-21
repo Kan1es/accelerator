@@ -86,21 +86,25 @@ def mobile_tickets_list(request):
         return Response({'error': 'У сотрудника не указан отдел'},
                         status=status.HTTP_400_BAD_REQUEST)
 
-    active_statuses = ['open', 'assigned', 'in_progress']
-    
+    active_statuses = ['open', 'assigned', 'in_progress', 'resolved']
+
     tickets = Ticket.objects.filter(
         category__department=department,
         status__in=active_statuses
-    ).select_related('assignee').order_by('-priority', '-created_at')
+    ).select_related('assignee', 'category').order_by('-priority', '-created_at')
 
     result = []
     for ticket in tickets:
         result.append({
             'id': ticket.id,
-            'status': ticket.get_status_display(),
+            'status': ticket.status,
             'description': ticket.description,
+            'assignee_id': ticket.assignee.id if ticket.assignee else None,
             'assignee_name': ticket.assignee.name if ticket.assignee else None,
-            'priority': ticket.priority
+            'priority': ticket.priority,
+            'category_name': ticket.category.name if ticket.category else None,
+            'created_at': ticket.created_at.isoformat() if ticket.created_at else None,
+            'deadline': ticket.deadline.isoformat() if ticket.deadline else None,
         })
 
     serializer = MobileTicketSerializer(result, many=True)

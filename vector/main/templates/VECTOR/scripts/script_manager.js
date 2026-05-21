@@ -101,24 +101,86 @@ if (taskDateInput && taskTimeInput) {
 
     updateTimeLimit();
 }
-taskForm?.addEventListener('submit', (e) => {
+async function _populateTaskFormSelects() {
+    if (!window.api || !window.api.getToken()) return;
+    const empSel = document.getElementById('task-form-assignee');
+    const catSel = document.getElementById('task-form-category');
+    try {
+        if (empSel) {
+            const employees = await window.api.get('/api/employees/');
+            empSel.innerHTML = '<option value="">— выберите сотрудника —</option>' +
+                (employees || []).map(e =>
+                    `<option value="${e.id}">${e.name}${e.is_busy ? ' (занят)' : ''}</option>`
+                ).join('');
+        }
+        if (catSel) {
+            const cats = await window.api.get('/api/categories/');
+            catSel.innerHTML = '<option value="">— выберите категорию —</option>' +
+                (cats || []).map(c =>
+                    `<option value="${c.id}">${c.name}</option>`
+                ).join('');
+        }
+    } catch (err) {
+        console.warn('Не удалось загрузить справочники:', err);
+    }
+}
+
+// Заполняем select-ы при открытии модалки.
+const _origOpenTaskModal = typeof openTaskModal === 'function' ? openTaskModal : null;
+window.openTaskModal = function () {
+    if (_origOpenTaskModal) _origOpenTaskModal();
+    _populateTaskFormSelects();
+};
+// Если кнопка уже была привязана к старой openTaskModal, перепривяжем.
+document.getElementById('open-task-modal')?.addEventListener('click', _populateTaskFormSelects);
+
+taskForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const formData = new FormData(taskForm);
-    const newTask = {
-        title: formData.get('title'),
-        date: formData.get('date'),
-        time: formData.get('time'),
-        priority: formData.get('priority'),
-        department: formData.get('department'),
-        comment: formData.get('comment')
+    const title = (formData.get('title') || '').trim();
+    const comment = (formData.get('comment') || '').trim();
+    const date = formData.get('date');
+    const time = formData.get('time');
+    const priority = parseInt(formData.get('priority') || '5', 10);
+    const categoryId = formData.get('category_id');
+    const assigneeId = formData.get('assignee_id');
+
+    const errBox = document.getElementById('task-form-error');
+    const showErr = (msg) => {
+        if (!errBox) { alert(msg); return; }
+        errBox.textContent = msg;
+        errBox.classList.remove('hidden');
     };
+    errBox?.classList.add('hidden');
 
-    console.log('Новая задача:', newTask);
+    if (!title) { showErr('Укажите название задачи'); return; }
+    if (!assigneeId) { showErr('Выберите исполнителя'); return; }
 
-    closeTaskModal();
-    taskForm.reset();
-    showTaskToast();
+    let deadlineIso = null;
+    if (date && time) {
+        deadlineIso = new Date(`${date}T${time}:00`).toISOString();
+    }
+
+    const description = comment ? `${title}\n\n${comment}` : title;
+
+    try {
+        await window.api.post('/api/tickets/', {
+            description,
+            category_id: categoryId ? Number(categoryId) : null,
+            assignee_id: Number(assigneeId),
+            priority,
+            deadline: deadlineIso,
+        });
+        closeTaskModal();
+        taskForm.reset();
+        showTaskToast();
+        // Если на странице есть таблицы тикетов/сотрудников — обновим.
+        if (typeof loadTasksGrid === 'function' && document.getElementById('tasks-grid')) loadTasksGrid();
+        if (typeof loadWorkersGrid === 'function' && document.getElementById('workers-grid')) loadWorkersGrid();
+    } catch (err) {
+        showErr(err.message || 'Не удалось создать задачу');
+    }
 });
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -610,4 +672,309 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-        
+
+// ───────────────────────────────────────────────────────────────────────────
+// Подключение фронта менеджера к Django API.
+// На manager_workers.html — список сотрудников (#workers-grid).
+// На manager_tasks.html — список тикетов (#tasks-grid) + донат-чарт.
+// ───────────────────────────────────────────────────────────────────────────
+
+const TICKET_STATUS_LABELS = {
+    open: 'Открыт',
+    assigned: 'Назначен',
+    in_progress: 'В работе',
+    resolved: 'Выполнен',
+    closed: 'Закрыт',
+    expired: 'Просрочен',
+};
+
+function _esc(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function _workerCard(emp) {
+    const shiftDot = emp.is_on_shift ? 'bg-[#22C55E]' : 'bg-[#6B6B6B]';
+    const busy = emp.is_busy
+        ? `<span class="text-[#FF9A3C] text-xs">занят: ${_esc(emp.current_task_description || '—')}</span>`
+        : `<span class="text-[#22C55E] text-xs">свободен</span>`;
+    return `
+      <div class="bg-[#151515] border border-white/5 rounded-[5px] p-4 flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="font-semibold">${_esc(emp.name)}</p>
+            <p class="text-xs text-[#6B6B6B]">ID: ${emp.id}</p>
+          </div>
+          <span class="w-2 h-2 rounded-full ${shiftDot}" title="${emp.is_on_shift ? 'на смене' : 'не на смене'}"></span>
+        </div>
+        <div>${busy}</div>
+        <button data-emp-id="${emp.id}" class="js-notify-btn mt-2 text-xs px-3 py-2 rounded border border-[#FF7A00] text-[#FF7A00] hover:bg-[#FF7A00]/10">
+          Отправить срочное уведомление
+        </button>
+      </div>`;
+}
+
+async function loadWorkersGrid() {
+    const grid = document.getElementById('workers-grid');
+    if (!grid || !window.api || !window.api.requireAuth()) return;
+
+    grid.innerHTML = '<p class="col-span-full text-[#6B6B6B] text-sm">Загрузка…</p>';
+    try {
+        const list = await window.api.get('/api/mobile/employees/');
+        if (!list || list.length === 0) {
+            grid.innerHTML = '<p class="col-span-full text-[#6B6B6B] text-sm">В отделе нет сотрудников</p>';
+            return;
+        }
+        grid.innerHTML = list.map(_workerCard).join('');
+        grid.querySelectorAll('.js-notify-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const id = btn.dataset.empId;
+                btn.disabled = true;
+                const original = btn.textContent;
+                btn.textContent = 'Отправляем…';
+                try {
+                    await window.api.post(`/api/mobile/notify/${id}/`, {});
+                    btn.textContent = 'Отправлено';
+                } catch (err) {
+                    btn.textContent = 'Ошибка';
+                    console.error(err);
+                } finally {
+                    setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 2000);
+                }
+            });
+        });
+    } catch (err) {
+        grid.innerHTML = `<p class="col-span-full text-red-400 text-sm">Не удалось загрузить: ${_esc(err.message || 'ошибка')}</p>`;
+    }
+}
+
+function _ticketCard(t) {
+    return `
+      <div class="bg-[#151515] border border-white/5 rounded-[5px] p-4 flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <p class="font-semibold">Задача №${t.id}</p>
+          <span class="text-xs text-[#FF9A3C]">${_esc(TICKET_STATUS_LABELS[t.status] || t.status)}</span>
+        </div>
+        <p class="text-sm text-[#B3B3B3]">${_esc(t.description)}</p>
+        <div class="text-xs text-[#6B6B6B] flex flex-wrap gap-3">
+          <span>Категория: ${_esc(t.category_name || '—')}</span>
+          <span>Исполнитель: ${_esc(t.assignee_name || 'не назначен')}</span>
+          <span>Приоритет: ${t.priority}</span>
+        </div>
+      </div>`;
+}
+
+function _renderDonut(done, total) {
+    const pct = total ? Math.round(done / total * 100) : 0;
+    const donutEl = document.getElementById('donut-done');
+    const pctEl = document.getElementById('donut-pct');
+    const legendPending = document.getElementById('legend-pending');
+    const legendDone = document.getElementById('legend-done');
+    if (donutEl) {
+        const C = 389.6;
+        donutEl.setAttribute('stroke-dashoffset', String(C - (C * pct / 100)));
+    }
+    if (pctEl) pctEl.textContent = `${pct}%`;
+    if (legendPending) legendPending.textContent = String(Math.max(0, total - done));
+    if (legendDone) legendDone.textContent = String(done);
+}
+
+async function loadTasksGrid() {
+    const grid = document.getElementById('tasks-grid');
+    if (!grid || !window.api || !window.api.requireAuth()) return;
+
+    grid.innerHTML = '<p class="text-[#6B6B6B] text-sm">Загрузка…</p>';
+    try {
+        const list = await window.api.get('/api/mobile/tickets/');
+        const tickets = list || [];
+
+        const filterInput = document.getElementById('filter-input');
+        const render = () => {
+            const q = (filterInput?.value || '').toLowerCase().trim();
+            const filtered = q
+                ? tickets.filter(t =>
+                    String(t.id).includes(q) ||
+                    (t.description || '').toLowerCase().includes(q) ||
+                    (t.assignee_name || '').toLowerCase().includes(q))
+                : tickets;
+            grid.innerHTML = filtered.length
+                ? filtered.map(_ticketCard).join('')
+                : '<p class="text-[#6B6B6B] text-sm">Ничего не найдено</p>';
+        };
+
+        const done = tickets.filter(t => t.status === 'resolved' || t.status === 'closed').length;
+        _renderDonut(done, tickets.length);
+
+        render();
+        filterInput?.addEventListener('input', render);
+    } catch (err) {
+        grid.innerHTML = `<p class="text-red-400 text-sm">Не удалось загрузить: ${_esc(err.message || 'ошибка')}</p>`;
+    }
+}
+
+async function loadMgrActiveTasks() {
+    const wrap = document.getElementById('mgr-active-tasks');
+    if (!wrap || !window.api || !window.api.requireAuth()) return;
+
+    const header = '<h2 class="text-xl font-medium sticky top-0 bg-[#0D0D0D] pt-2 z-10">Задачи в работе</h2>';
+    wrap.innerHTML = header + '<p class="text-xs text-[#6B6B6B] py-4">Загрузка…</p>';
+
+    try {
+        const list = await window.api.get('/api/mobile/tickets/');
+        const active = (list || []).filter(t => t.status === 'in_progress' || t.status === 'assigned');
+        if (active.length === 0) {
+            wrap.innerHTML = header + '<p class="text-xs text-[#6B6B6B] py-4">Активных задач нет</p>';
+            return;
+        }
+        wrap.innerHTML = header + active.map(t => {
+            const left = t.deadline ? Math.max(0, new Date(t.deadline).getTime() - Date.now()) : 0;
+            const h = String(Math.floor(left / 3600000)).padStart(2,'0');
+            const m = String(Math.floor((left % 3600000) / 60000)).padStart(2,'0');
+            const s = String(Math.floor((left % 60000) / 1000)).padStart(2,'0');
+            return `
+              <div class="task-card">
+                <div class="flex justify-between items-start gap-4">
+                    <div>
+                        <h3 class="font-semibold text-base tracking-tight">Задача №${t.id}</h3>
+                        <p class="text-xs text-[#6B6B6B] mt-0.5">${_esc(t.description || '').slice(0, 80)}</p>
+                        <p class="text-xs text-[#B3B3B3] mt-1">Выполняет: ${_esc(t.assignee_name || '—')}</p>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <p class="text-[10px] text-[#6B6B6B]">До конца срока выполнения:</p>
+                        <p class="text-lg font-semibold ${left > 0 ? 'text-[#FF7A00]' : 'text-[#EF4444]'} tracking-widest">${h}:${m}:${s}</p>
+                    </div>
+                </div>
+              </div>`;
+        }).join('');
+    } catch (err) {
+        wrap.innerHTML = header + `<p class="text-xs text-red-400 py-4">Ошибка: ${_esc(err.message || '')}</p>`;
+    }
+}
+
+async function loadMgrEmployees() {
+    const wrap = document.getElementById('mgr-employees-list');
+    if (!wrap || !window.api || !window.api.requireAuth()) return;
+    wrap.innerHTML = '<p class="text-xs text-[#6B6B6B] text-center p-4">Загрузка…</p>';
+
+    try {
+        const list = await window.api.get('/api/mobile/employees/');
+        if (!list || list.length === 0) {
+            wrap.innerHTML = '<p class="text-xs text-[#6B6B6B] text-center p-4">Нет сотрудников</p>';
+            return;
+        }
+        wrap.innerHTML = list.map(e => {
+            const badge = e.is_busy
+                ? '<span class="badge-working"><span class="w-1.5 h-1.5 rounded-full bg-[#F59E0B] inline-block shrink-0"></span>В работе</span>'
+                : (e.is_on_shift
+                    ? '<span class="badge-waiting">Ожидает</span>'
+                    : '<span class="badge-waiting" style="opacity:.5">Не на смене</span>');
+            const initials = (e.name || '?').split(' ').map(s => s[0]).slice(0, 2).join('');
+            return `
+              <div class="employee-row">
+                <div class="avatar">${_esc(initials)}</div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-xs font-medium truncate">${_esc(e.name)}</p>
+                    <p class="text-[10px] text-[#6B6B6B] truncate">${_esc(e.current_task_description || '—')}</p>
+                </div>
+                ${badge}
+              </div>`;
+        }).join('');
+    } catch (err) {
+        wrap.innerHTML = `<p class="text-xs text-red-400 text-center p-4">Ошибка: ${_esc(err.message || '')}</p>`;
+    }
+}
+
+async function loadMgrProfile() {
+    if (!document.getElementById('mgr-profile-name')) return;
+    if (!window.api || !window.api.requireAuth()) return;
+    try {
+        const data = await window.api.get('/api/profile/summary/');
+        const name = data.name || '—';
+        const role = data.role || (data.department ? data.department : '—');
+        document.getElementById('mgr-profile-name').textContent = name;
+        document.getElementById('mgr-profile-role').textContent = role;
+        const avatar = document.getElementById('mgr-profile-avatar');
+        if (avatar) {
+            const initials = name.split(' ').map(s => s[0] || '').slice(0, 2).join('').toUpperCase();
+            avatar.textContent = initials || '—';
+        }
+        const done = Number(data.done_week || 0);
+        const total = Number(data.total_week || 0);
+        const pct = total > 0 ? Math.round(done / total * 100) : 0;
+        const bar = document.getElementById('mgr-profile-progress');
+        if (bar) bar.style.width = pct + '%';
+        const doneEl = document.getElementById('mgr-profile-done');
+        if (doneEl) doneEl.textContent = String(done);
+        const totalEl = document.getElementById('mgr-profile-total');
+        if (totalEl) totalEl.textContent = total > 0 ? `${pct}% (из ${total})` : 'из 0';
+    } catch (err) {
+        console.warn('loadMgrProfile:', err);
+    }
+}
+
+const _NOTIF_ICON = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" class="shrink-0 mt-0.5"><path d="M9 18l6-6-6-6"/></svg>`;
+
+function _notifTimeShort(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const today = new Date();
+    const sameDay = d.toDateString() === today.toDateString();
+    if (sameDay) {
+        return d.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
+    }
+    return d.toLocaleDateString('ru', { day: '2-digit', month: '2-digit' }) + ' ' +
+           d.toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
+}
+
+function _notifStyle(title) {
+    const t = (title || '').toLowerCase();
+    if (t.includes('срочн') || t.includes('критич')) {
+        return { wrap: 'notif-row bg-[#EF4444]/5 border-y border-[#EF4444]', text: 'text-[#EF4444] font-medium' };
+    }
+    if (t.includes('просрочк') || t.includes('эскал') || t.includes('повторно')) {
+        return { wrap: 'notif-row bg-[#FF7A00]/5 border-y border-[#FF7A00]', text: 'text-[#FF7A00] font-medium' };
+    }
+    if (t.includes('выполн') || t.includes('заверш')) {
+        return { wrap: 'notif-row bg-[#22C55E]/5 border-y border-[#22C55E]', text: 'text-[#22C55E] font-medium' };
+    }
+    return { wrap: 'notif-row', text: 'text-white' };
+}
+
+async function loadMgrNotifications() {
+    const wrap = document.getElementById('mgr-notif-list');
+    if (!wrap || !window.api || !window.api.requireAuth()) return;
+
+    wrap.innerHTML = '<p class="text-xs text-[#6B6B6B] text-center p-4">Загрузка…</p>';
+    try {
+        const list = await window.api.get('/api/notifications/?limit=50');
+        if (!list || list.length === 0) {
+            wrap.innerHTML = '<p class="text-xs text-[#6B6B6B] text-center p-4">Уведомлений пока нет</p>';
+            return;
+        }
+        wrap.innerHTML = list.map(n => {
+            const st = _notifStyle(n.title);
+            const text = n.message ? `${n.title}: ${n.message}` : n.title;
+            return `
+              <div class="${st.wrap} flex">
+                ${_NOTIF_ICON}
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs leading-snug ${st.text}">${_esc(text)}</p>
+                </div>
+                <span class="text-[10px] text-[#6B6B6B] shrink-0 ml-1">${_esc(_notifTimeShort(n.created_at))}</span>
+              </div>`;
+        }).join('');
+    } catch (err) {
+        wrap.innerHTML = `<p class="text-xs text-red-400 text-center p-4">Ошибка: ${_esc(err.message || '')}</p>`;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('workers-grid')) loadWorkersGrid();
+    if (document.getElementById('tasks-grid')) loadTasksGrid();
+    if (document.getElementById('mgr-active-tasks')) loadMgrActiveTasks();
+    if (document.getElementById('mgr-employees-list')) loadMgrEmployees();
+    if (document.getElementById('mgr-profile-name')) loadMgrProfile();
+    if (document.getElementById('mgr-notif-list')) loadMgrNotifications();
+});
+

@@ -19,7 +19,10 @@ def classify_text(text: str):
         response = requests.post(url_post, json={"text": text}, timeout=timeout)
         response.raise_for_status()
         data = response.json()
-        return data.get("category_id"), data.get("confidence")
+        # ML возвращает category_id (индекс модели 0..N-1) и category_db_id
+        # (реальный PK Category в нашей БД). Нам нужен второй.
+        db_id = data.get("category_db_id") or data.get("category_id")
+        return db_id, data.get("confidence")
     except requests.exceptions.RequestException as exc:
         logger.warning("classify_text: ML-сервис недоступен: %s", exc)
         return default_category_id, 0

@@ -2,8 +2,22 @@ from django.urls import path
 from .views import shift_start, shift_end, employee_status, accept_ticket, decline_ticket, complete_ticket
 from .views_analytics import ml_accuracy, analitic_agregation, avg_time, escalation_analytics, category_counter_tickets, classificate_and_create_ticket
 from .views_mobile import mobile_employees_list, mobile_tickets_list, mobile_notify_employee, mobile_predict
+from .views_auth import login_view, logout_view, me_view
+from .views_tickets import (
+    create_ticket, list_employees, list_categories, my_tickets,
+    list_notifications, profile_summary,
+)
 
 urlpatterns = [
+    path('api/auth/login/', login_view, name='auth-login'),
+    path('api/auth/logout/', logout_view, name='auth-logout'),
+    path('api/auth/me/', me_view, name='auth-me'),
+    path('api/tickets/', create_ticket, name='ticket-create'),
+    path('api/tickets/my/', my_tickets, name='ticket-my'),
+    path('api/employees/', list_employees, name='employees-list'),
+    path('api/categories/', list_categories, name='categories-list'),
+    path('api/notifications/', list_notifications, name='notifications-list'),
+    path('api/profile/summary/', profile_summary, name='profile-summary'),
     path('api/shift/start/', shift_start, name='shift_start'),
     path('api/shift/end/', shift_end, name='shift_end'),
     path('api/employee/status/', employee_status, name='employee_status'),

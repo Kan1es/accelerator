@@ -205,32 +205,37 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm text-[#B3B3B3] mb-2">Важность</label>
+                        <label class="block text-sm text-[#B3B3B3] mb-2">Важность (1–10)</label>
                         <select name="priority" required class="modal-input">
-                            <option value="" class="text-[#B3B3B3]">Выберите важность</option>
-                            <option value="low">Низкая</option>
-                            <option value="high">Высокая</option>
+                            <option value="3">Низкая (3)</option>
+                            <option value="5" selected>Средняя (5)</option>
+                            <option value="7">Высокая (7)</option>
+                            <option value="10">Критическая (10)</option>
                         </select>
                     </div>
 
                     <div>
-                        <label class="block text-sm text-[#B3B3B3] mb-2">Ваш отдел</label>
-                        <select name="department" required class="modal-input">
-                            <option value="" class="text-[#B3B3B3]">Выберите отдел</option>
-                            <option value="Manager dep">Менеджерская</option>
-                            <option value="Office 2">Офис 2</option>
-                            <option value="IT dept">IT отдел</option>
-                            <option value="Dept 2">Отдел 2</option>
-                            <option value="Electricity Dept">Электрощитовая</option>
+                        <label class="block text-sm text-[#B3B3B3] mb-2">Категория</label>
+                        <select name="category_id" id="task-form-category" required class="modal-input">
+                            <option value="">Загрузка…</option>
                         </select>
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-sm text-[#B3B3B3] mb-2">Комментарий</label>
-                    <textarea name="comment" rows="4" class="modal-input resize-none"
-                        placeholder="Опишите задачу подробнее: что нужно сделать, особенности, дедлайн, приоритетные детали"></textarea>
+                    <label class="block text-sm text-[#B3B3B3] mb-2">Исполнитель</label>
+                    <select name="assignee_id" id="task-form-assignee" required class="modal-input">
+                        <option value="">Загрузка…</option>
+                    </select>
                 </div>
+
+                <div>
+                    <label class="block text-sm text-[#B3B3B3] mb-2">Описание задачи</label>
+                    <textarea name="comment" rows="4" class="modal-input resize-none"
+                        placeholder="Опишите задачу подробнее: что нужно сделать, особенности, приоритетные детали"></textarea>
+                </div>
+
+                <div id="task-form-error" class="text-red-400 text-sm hidden"></div>
 
                 <div class="pt-2 flex justify-end">
                     <button type="submit"
@@ -242,6 +247,7 @@
         </div>
     </div>
 
+    <script src="scripts/api.js"></script>
     <script src="scripts/script_manager.js"></script>
 </body>
 

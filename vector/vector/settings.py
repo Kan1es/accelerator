@@ -8,22 +8,22 @@ import dotenv
 # BASE_DIR = vector/  (родитель vector/vector/)
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# .env лежит в vector/.env — parent.parent от vector/vector/settings.py
-info = dotenv.dotenv_values(BASE_DIR / ".env")
+# .env лежит в vector/.env. Подгружаем в os.environ, чтобы os.getenv ниже работал.
+dotenv.load_dotenv(BASE_DIR / ".env")
 
-SECRET_KEY = info['SECRET_KEY']
+SECRET_KEY = os.environ['SECRET_KEY']
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 INSTALLED_APPS = [
     'main',
     'channels',
     'rest_framework',
+    'rest_framework.authtoken',
     'drf_yasg',
-    'corsheaders',
     'django_celery_beat',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -33,10 +33,14 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 ]
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+}
+
 MIDDLEWARE = [
-    # FIX: CorsMiddleware обязан быть первым — до CommonMiddleware,
-    # иначе preflight-запросы браузера не получат CORS-заголовки.
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -45,15 +49,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
-# FIX: Укажите адреса фронтенда. В проде замените на реальный домен.
-# Для быстрой отладки можно временно выставить CORS_ALLOW_ALL_ORIGINS = True.
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://127.0.0.1:3000",
-]
-# CORS_ALLOW_ALL_ORIGINS = True  # только для отладки, не использовать в проде
 
 ROOT_URLCONF = 'vector.urls'
 
@@ -101,7 +96,13 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+# Раздаём JS/CSS/картинки фронта из main/templates/VECTOR/.
+# В шаблонах ссылки остаются относительными (scripts/..., styles/..., images/...),
+# а Django отдаёт эти каталоги статикой под /static/.
+STATICFILES_DIRS = [
+    BASE_DIR / 'main' / 'templates' / 'VECTOR',
+]
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Celery

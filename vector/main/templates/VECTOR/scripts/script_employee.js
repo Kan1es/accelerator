@@ -204,26 +204,123 @@ document.addEventListener('DOMContentLoaded', () => {
     const shiftTimerWrap = document.getElementById('shift-timer-wrap');
     const shiftTimer = document.getElementById('shift-timer');
 
-    function startShift() {
+    function applyShiftUiOn(elapsedSeconds = 0) {
         shiftStarted = true;
-
-        shiftToggleText.textContent = 'Закончить смену';
-        shiftIndicator.classList.remove('bg-[#22C55E]');
-        shiftIndicator.classList.add('bg-[#EF4444]');
-        shiftToggleBtn.querySelector('p').textContent = 'Смена активна';
-
-        startShiftTimer();
+        if (shiftToggleText) shiftToggleText.textContent = 'Закончить смену';
+        shiftIndicator?.classList.remove('bg-[#22C55E]');
+        shiftIndicator?.classList.add('bg-[#EF4444]');
+        const label = shiftToggleBtn?.querySelector('p');
+        if (label) label.textContent = 'Смена активна';
+        startShiftTimer(elapsedSeconds);
     }
 
-    function endShift() {
+    function applyShiftUiOff() {
         shiftStarted = false;
-
-        shiftToggleText.textContent = 'Начать смену';
-        shiftIndicator.classList.remove('bg-[#EF4444]');
-        shiftIndicator.classList.add('bg-[#22C55E]');
-        shiftToggleBtn.querySelector('p').textContent = 'Статус';
-
+        if (shiftToggleText) shiftToggleText.textContent = 'Начать смену';
+        shiftIndicator?.classList.remove('bg-[#EF4444]');
+        shiftIndicator?.classList.add('bg-[#22C55E]');
+        const label = shiftToggleBtn?.querySelector('p');
+        if (label) label.textContent = 'Статус';
         stopShiftTimer();
+    }
+
+    async function startShift() {
+        try {
+            await window.api.post('/api/shift/start/', {});
+            applyShiftUiOn(0);
+        } catch (err) {
+            alert(err.message || 'Не удалось начать смену');
+        }
+    }
+
+    async function endShift() {
+        try {
+            await window.api.post('/api/shift/end/', {});
+            applyShiftUiOff();
+        } catch (err) {
+            alert(err.message || 'Не удалось завершить смену');
+        }
+    }
+
+    // Восстановление статуса смены при загрузке страницы.
+    (async () => {
+        if (!window.api || !window.api.getToken()) return;
+        try {
+            const s = await window.api.get('/api/employee/status/');
+            if (s.is_on_shift) {
+                const eightH = 8 * 3600;
+                const elapsed = s.remaining_shift_time != null ? eightH - s.remaining_shift_time : 0;
+                applyShiftUiOn(Math.max(0, elapsed));
+            }
+        } catch { /* ничего */ }
+    })();
+
+    // Подгрузка задач для employee_dashboard.html
+    (async () => {
+        if (!window.api || !window.api.getToken()) return;
+        const taskList = document.getElementById('emp-task-list');
+        const attention = document.getElementById('emp-attention-list');
+        if (!taskList && !attention) return;
+
+        try {
+            const tickets = await window.api.get('/api/tickets/my/');
+            const items = tickets || [];
+
+            if (taskList) {
+                if (items.length === 0) {
+                    taskList.innerHTML = '<p class="text-xs text-[#6B6B6B] text-center p-4">Нет задач</p>';
+                } else {
+                    taskList.innerHTML = items.map(t => `
+                        <div class="task-item">
+                            <span class="dot">•</span>
+                            <div>
+                                <p class="text-sm">${_e(t.category_name || 'Без категории')}</p>
+                                <span class="muted">№${t.id} • ${_e(_emp_statusLabel(t.status))}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+
+            if (attention) {
+                const now = Date.now();
+                const urgent = items.filter(t =>
+                    t.status !== 'resolved' &&
+                    t.status !== 'closed' &&
+                    (t.deadline ? new Date(t.deadline).getTime() - now < 24 * 3600 * 1000 : t.priority >= 7)
+                );
+                if (urgent.length === 0) {
+                    attention.innerHTML = '<p class="text-xs text-[#6B6B6B] text-center py-6">Срочных задач нет</p>';
+                } else {
+                    attention.innerHTML = urgent.map(t => `
+                        <div class="bg-[#111111] border border-white/5 p-4 md:p-8 rounded-[5px] flex flex-col md:flex-row items-center justify-between gap-4 shrink-0">
+                            <div class="flex flex-col md:flex-row items-center text-center md:text-left gap-4 md:gap-8">
+                                <div class="bg-[#FF7A00] w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shrink-0"></div>
+                                <div>
+                                    <h4 class="font-[500] text-xl md:text-2xl uppercase tracking-tighter">Задача №${t.id}</h4>
+                                    <p class="text-xs md:text-sm muted">${_e(t.category_name || 'Без категории')} • приоритет ${t.priority}</p>
+                                </div>
+                            </div>
+                            <a class="w-full md:w-auto px-4 py-2 bg-[#1F1F1F] rounded-[5px] text-lg hover:bg-[#252525] border border-white/5 transition-colors hover:cursor-pointer"
+                                href="employee_tasks.html">Открыть</a>
+                        </div>
+                    `).join('');
+                }
+            }
+        } catch (err) {
+            const msg = `<p class="text-xs text-red-400 text-center p-4">Ошибка: ${_e(err.message || 'не удалось загрузить')}</p>`;
+            if (taskList) taskList.innerHTML = msg;
+            if (attention) attention.innerHTML = msg;
+        }
+    })();
+
+    function _e(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    function _emp_statusLabel(s) {
+        return ({open:'Открыта', assigned:'Назначена', in_progress:'В работе',
+                 resolved:'Выполнена', closed:'Закрыта', expired:'Просрочена'})[s] || s;
     }
 
     function openShiftModal(step = 1) {
@@ -267,13 +364,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target === shiftModal) closeShiftModal();
     });
 
-    shiftConfirmBtn?.addEventListener('click', () => {
+    shiftConfirmBtn?.addEventListener('click', async () => {
         if (confirmStep === 1) {
             openShiftModal(2);
             return;
         }
 
-        endShift();
+        await endShift();
         closeShiftModal();
     });
     function formatShiftDuration(ms) {
@@ -285,12 +382,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${hours}:${minutes}:${seconds}`;
     }
 
-    function startShiftTimer() {
+    function startShiftTimer(elapsedSeconds = 0) {
         if (!shiftTimer || !shiftTimerWrap) return;
 
-        shiftStartTime = new Date();
+        shiftStartTime = new Date(Date.now() - elapsedSeconds * 1000);
         shiftTimerWrap.classList.remove('hidden');
-        shiftTimer.textContent = '00:00:00';
+        shiftTimer.textContent = formatShiftDuration(elapsedSeconds * 1000);
 
         if (shiftTimerInterval) {
             clearInterval(shiftTimerInterval);
@@ -333,22 +430,63 @@ window.setChatQuery = function (text) {
 
 // Функция для Alpine.js (TaskManager)
 // Этот объект Alpine подхватит автоматически при инициализации x-data="taskManager()"
+// Мапинг статусов: бэк (Ticket.status) → UI (taskManager).
+const TICKET_STATUS_TO_UI = {
+    open: 'assigned',
+    assigned: 'assigned',
+    in_progress: 'progress',
+    resolved: 'done',
+    closed: 'done',
+    expired: 'done',
+};
+
+function _ticketToTask(t) {
+    return {
+        id: t.id,
+        title: t.category_name || 'Без категории',
+        dept: t.assignee_name ? `Исполнитель: ${t.assignee_name}` : 'Не назначен',
+        comment: t.description,
+        status: TICKET_STATUS_TO_UI[t.status] || 'assigned',
+        rawStatus: t.status,
+        deadline: t.deadline ? new Date(t.deadline).toLocaleTimeString('ru', {hour: '2-digit', minute: '2-digit'}) : 'Без срока',
+        assigneeId: t.assignee_id,
+        priority: t.priority,
+    };
+}
+
 function taskManager() {
     return {
         search: '',
         filter: 'all',
         showConfirm: false,
-        pendingTaskId: null, // Храним ID вместо индекса для надежности
-        tasks: [
-            { id: 31, title: 'Замена оборудования', dept: 'Отдел I, цех 2', status: 'assigned', deadline: '14:00' },
-            { id: 153, title: 'Проверка связи', dept: 'Отдел I, цех 4', status: 'progress', deadline: '15:00' },
-            { id: 204, title: 'Плановый обход', dept: 'Цех 5', status: 'done', deadline: '18:00' },
-            { id: 201, title: 'Плановый обход', dept: 'Цех 5', status: 'progress', deadline: '18:00' }
-        ],
-        meetings: [
-            { id: 1, title: 'Встреча с менеджером', comment: 'Разбор правок по цеху №2', time: '19:00' },
-            { id: 2, title: 'Инструктаж', comment: 'Техника безопасности', time: '17:30' }
-        ],
+        pendingTaskId: null,
+        loading: false,
+        loadError: null,
+        tasks: [],
+        meetings: [],
+        currentEmployeeId: null,
+
+        async init() {
+            if (!window.api || !window.api.requireAuth()) return;
+            const session = window.api.getSession();
+            this.currentEmployeeId = session.employeeId ? Number(session.employeeId) : null;
+            await this.reload();
+        },
+
+        async reload() {
+            this.loading = true;
+            this.loadError = null;
+            try {
+                const list = await window.api.get('/api/mobile/tickets/');
+                this.tasks = (list || []).map(_ticketToTask);
+            } catch (err) {
+                this.loadError = err.message || 'Не удалось загрузить задачи';
+                this.tasks = [];
+            } finally {
+                this.loading = false;
+            }
+        },
+
 
         // Функция расчета оставшегося времени
         getTimeUntil(targetTime) {
@@ -387,26 +525,50 @@ function taskManager() {
             done: { label: 'Выполнено' }
         },
 
-        // Передаем ID задачи, а не индекс
-        changeStatus(id) {
+        async changeStatus(id) {
             const task = this.tasks.find(t => t.id === id);
             if (!task) return;
 
             if (task.status === 'assigned') {
-                task.status = 'progress';
+                try {
+                    const resp = await window.api.patch(`/api/tickets/${id}/accept/`, {});
+                    task.rawStatus = resp.status;
+                    task.status = TICKET_STATUS_TO_UI[resp.status] || 'progress';
+                } catch (err) {
+                    alert(err.message || 'Не удалось принять задачу');
+                }
             } else if (task.status === 'progress') {
                 this.pendingTaskId = id;
-                this.showConfirm = true; // Открываем окно
+                this.showConfirm = true;
             }
         },
 
-        confirmDone() {
-            const task = this.tasks.find(t => t.id === this.pendingTaskId);
-            if (task) {
-                task.status = 'done';
+        async declineTask(id) {
+            if (!confirm('Отклонить задачу?')) return;
+            try {
+                const resp = await window.api.patch(`/api/tickets/${id}/decline/`, {});
+                this.tasks = this.tasks.filter(t => t.id !== id);
+            } catch (err) {
+                alert(err.message || 'Не удалось отклонить задачу');
             }
-            this.showConfirm = false;
-            this.pendingTaskId = null;
+        },
+
+        async confirmDone() {
+            const id = this.pendingTaskId;
+            if (!id) { this.showConfirm = false; return; }
+            try {
+                const resp = await window.api.patch(`/api/tickets/${id}/complete/`, {});
+                const task = this.tasks.find(t => t.id === id);
+                if (task) {
+                    task.rawStatus = resp.status;
+                    task.status = TICKET_STATUS_TO_UI[resp.status] || 'done';
+                }
+            } catch (err) {
+                alert(err.message || 'Не удалось завершить задачу');
+            } finally {
+                this.showConfirm = false;
+                this.pendingTaskId = null;
+            }
         },
 
         cancelDone() {

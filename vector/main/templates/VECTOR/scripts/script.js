@@ -165,7 +165,7 @@ window.addUserMessage = function(text) {
     chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
 }
 
-window.sendMessage = function() {
+window.sendMessage = async function() {
     const input = document.getElementById('user-input');
     if (!input) return;
 
@@ -175,14 +175,37 @@ window.sendMessage = function() {
     addUserMessage(text);
     input.value = '';
 
-    // Имитация ответа ИИ или отправка на API
-    addBotMessage("Анализирую обращение...");
-    
-    // В будущем тут будет реальный POST запрос к /api/agent/classify/
-    setTimeout(() => {
-        // Заглушка для ответа
-        addBotMessage("Спасибо за обращение! Система ИИ классифицировала вашу заявку. В данный момент подключение к бэкенду настраивается.");
-    }, 1500);
+    if (!window.api || !window.api.getToken()) {
+        addBotMessage('Для отправки обращения необходимо <a href="/login.html" class="underline text-[#FF7A00]">войти</a>.');
+        return;
+    }
+
+    addBotMessage('Анализирую обращение…');
+
+    try {
+        const data = await window.api.post('/api/agent/classify/', { text });
+        const confidencePct = Math.round((data.confidence || 0) * 100);
+        addBotMessage(
+            `Заявка №${data.ticket_id} создана.<br>` +
+            `Категория: <span class="text-[#FF7A00]">${data.category}</span> ` +
+            `(уверенность ${confidencePct}%).<br>` +
+            `Передал её в работу — отслеживайте статус в личном кабинете.`
+        );
+    } catch (err) {
+        if (err.isTimeout) {
+            addBotMessage('Сервер не ответил вовремя. Попробуйте ещё раз чуть позже.');
+        } else if (err.isNetwork) {
+            addBotMessage('Не удалось связаться с сервером. Проверьте соединение.');
+        } else if (err.status === 503) {
+            addBotMessage('ML-сервис временно недоступен. Заявка не создана.');
+        } else if (err.status === 400) {
+            addBotMessage(err.message || 'Текст обращения не принят.');
+        } else if (err.status === 401) {
+            // api.js уже редиректит на /login.html
+        } else {
+            addBotMessage(`Ошибка при отправке: ${err.message || 'неизвестно'}`);
+        }
+    }
 }
 
 

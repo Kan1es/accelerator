@@ -1,8 +1,5 @@
 
-// сюда бидешку
 const CONFIG = {
-    API_URL: '/api/auth/login',
-
     REDIRECT: {
         employee: 'employee_dashboard.html',
         manager:  'manager_dashboard.html',
@@ -129,43 +126,6 @@ function setLoading(state) {
     document.getElementById(id)?.addEventListener('input', clearError);
 });
 
-//Тест
-const TEST_USERS = [
-    { login: 'employee', password: '1234', role: 'employee' },
-    { login: 'manager',  password: '1234', role: 'manager'  },
-];
-
-async function authenticate(login, password, role) {
-
-    const user = TEST_USERS.find(
-        u => u.login === login && u.password === password && u.role === role
-    );
-    return user
-        ? { ok: true, user }
-        : { ok: false, message: 'Неверный логин или пароль' };
-
-    // это бидешку когда подключите
-    //
-    // try {
-    //     const res  = await fetch(CONFIG.API_URL, {
-    //         method:  'POST',
-    //         headers: { 'Content-Type': 'application/json' },
-    //         body:    JSON.stringify({ login, password, role }),
-    //     });
-    //     const data = await res.json();
-    //
-    //     if (res.ok) {
-    //         if (data.token) localStorage.setItem('auth_token', data.token);
-    //         localStorage.setItem('user_role',  data.role);
-    //         localStorage.setItem('user_name',  data.name);
-    //         return { ok: true, user: data };
-    //     }
-    //     return { ok: false, message: data.message || 'Неверный логин или пароль' };
-    // } catch {
-    //     return { ok: false, message: 'Ошибка соединения с сервером' };
-    // }
-}
-
 document.getElementById('login-form').addEventListener('submit', async e => {
     e.preventDefault();
     clearError();
@@ -182,16 +142,16 @@ document.getElementById('login-form').addEventListener('submit', async e => {
     if (!password) { showError('Введите пароль'); return; }
 
     setLoading(true);
-    await new Promise(r => setTimeout(r, 700)); //потом убрать когда бд будет
-
-    const result = await authenticate(login, password, selectedRole);
-    setLoading(false);
-
-    if (result.ok) {
-        localStorage.setItem('user_role',  result.user.role);
-        localStorage.setItem('user_login', result.user.login);
-        window.location.href = CONFIG.REDIRECT[result.user.role];
-    } else {
-        showError(result.message);
+    try {
+        const data = await window.api.login(login, password, selectedRole);
+        window.location.href = CONFIG.REDIRECT[data.role] || CONFIG.REDIRECT.employee;
+    } catch (err) {
+        if (err.isTimeout)       showError('Сервер не отвечает');
+        else if (err.isNetwork)  showError('Ошибка соединения с сервером');
+        else if (err.status === 401) showError('Неверный логин или пароль');
+        else if (err.status === 403) showError(err.message || 'Роль не совпадает');
+        else                     showError(err.message || 'Ошибка входа');
+    } finally {
+        setLoading(false);
     }
 });

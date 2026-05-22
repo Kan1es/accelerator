@@ -50,10 +50,11 @@ def mobile_employees_list(request):
     result = []
     for emp in employees:
         current_ticket = emp.current_tickets[0] if emp.current_tickets else None
-        
+
         result.append({
             'id': emp.id,
             'name': emp.name,
+            'role': emp.role.name if emp.role else None,
             'is_on_shift': bool(emp.active_shift),
             'is_busy': emp.is_busy,
             'current_task_description': current_ticket.description if current_ticket else None,

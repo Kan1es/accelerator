@@ -4,7 +4,13 @@ from django.utils import timezone
 
 
 def push_to_queue(ticket, priority):
-    department = ticket.creator.department if ticket.creator else None
+    # Сначала пытаемся взять отдел из категории тикета (то есть «куда задача
+    # должна попасть по сути»). Если категории нет — fallback на отдел инициатора.
+    department = None
+    if ticket.category and ticket.category.department:
+        department = ticket.category.department
+    elif ticket.creator:
+        department = ticket.creator.department
     cur_time = timezone.now()
 
     assig_time = TicketAssignment.objects.filter(ticket=ticket).first()

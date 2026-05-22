@@ -16,6 +16,7 @@ from django.db.models import Count, Q
 
 from .services.ml_client import classify_text, fetch_ml_accuracy
 from .services.queue_service import push_to_queue
+from .utils import auto_assign_from_queue
 from django.db import transaction
 
 @swagger_auto_schema(
@@ -330,6 +331,13 @@ def classificate_and_create_ticket(request):
             deadline=deadline,
         )
         push_to_queue(new_ticket, priority=new_ticket.priority)
+        # После коммита пробуем сразу назначить кого-нибудь свободного из отдела
+        # категории. Если все заняты — тикет останется в очереди, и подхватится
+        # автоматически, как только кто-то освободится (decline/complete).
+        transaction.on_commit(auto_assign_from_queue)
+
+    # Перечитаем тикет, чтобы вернуть актуальные assignee/status.
+    new_ticket.refresh_from_db()
 
     result = {
         'category': category.name,

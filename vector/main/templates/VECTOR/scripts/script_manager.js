@@ -869,13 +869,16 @@ async function loadMgrEmployees() {
                 : (e.is_on_shift
                     ? '<span class="badge-waiting">Ожидает</span>'
                     : '<span class="badge-waiting" style="opacity:.5">Не на смене</span>');
-            const initials = (e.name || '?').split(' ').map(s => s[0]).slice(0, 2).join('');
+            const initials = (e.name || '?').split(' ').map(s => s[0]).slice(0, 2).join('').toUpperCase();
+            const subline = e.current_task_description
+                ? `📌 ${e.current_task_description}`
+                : (e.role || 'Сотрудник');
             return `
               <div class="employee-row">
                 <div class="avatar">${_esc(initials)}</div>
                 <div class="flex-1 min-w-0">
                     <p class="text-xs font-medium truncate">${_esc(e.name)}</p>
-                    <p class="text-[10px] text-[#6B6B6B] truncate">${_esc(e.current_task_description || '—')}</p>
+                    <p class="text-[10px] text-[#6B6B6B] truncate">${_esc(subline)}</p>
                 </div>
                 ${badge}
               </div>`;

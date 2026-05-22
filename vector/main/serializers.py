@@ -81,6 +81,7 @@ class TicketCompleteResponseSerializer(serializers.Serializer):
 class MobileEmployeeSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     name = serializers.CharField()
+    role = serializers.CharField(allow_null=True, required=False)
     is_on_shift = serializers.BooleanField()
     is_busy = serializers.BooleanField()
     current_task_description = serializers.CharField(allow_null=True, required=False)

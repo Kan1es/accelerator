@@ -313,12 +313,11 @@ def classificate_and_create_ticket(request):
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 
-    escalation_rule = EscalationRule.objects.filter(category=category).first()
+    # ИИ-агент не выставляет дедлайн: мы не можем нормально его определить
+    # по одному сообщению. Срок останется None («Без срока») — менеджер при
+    # необходимости назначит вручную через модалку.
     now = timezone.now()
-    if escalation_rule and escalation_rule.time_limit:
-        deadline = now + timedelta(minutes=escalation_rule.time_limit)
-    else:
-        deadline = None
+    deadline = None
 
     with transaction.atomic():
         new_ticket = Ticket.objects.create(

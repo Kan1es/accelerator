@@ -33,28 +33,27 @@
         <div class="lg:col-span-3 flex flex-col gap-4 min-h-0 order-2 lg:order-1 h-full lg:h-full">
             <div class="card p-6 flex flex-col gap-4 shrink-0">
                 <div class="flex items-center gap-4">
-                    <div
-                        class="w-16 h-16 rounded-full bg-[#D9D9D9] flex items-center justify-center text-black text-[10px] font-bold shrink-0">
-                        ФОТО</div>
+                    <div id="emp-tasks-avatar"
+                        class="w-16 h-16 rounded-full bg-[#FF7A00]/15 border border-[#FF7A00]/40 flex items-center justify-center text-[#FF7A00] text-xl font-semibold shrink-0">
+                        —</div>
                     <div class="overflow-hidden">
-                        <h2 class="text-xl font-semibold">Имя Фамилия</h2>
-                        <p class="text-m text-[#6B6B6B]">Должность</p>
+                        <h2 id="emp-tasks-name" class="text-xl font-semibold">—</h2>
+                        <p id="emp-tasks-role" class="text-m text-[#6B6B6B]">—</p>
                     </div>
                 </div>
-                <div class="mt-4 group relative" title="5/8 задач">
-
+                <div class="mt-4 group relative" id="emp-tasks-progress-wrap" title="0 из 0">
                     <p class="text-sm text-center text-[#6B6B6B]  mb-2 font-medium">Шкала
                         выполнения</p>
 
                     <div class="w-full bg-[#1A1A1A] h-2 rounded-full overflow-hidden mb-1">
-                        <div class="h-full bg-[#FF7A00] transition-all duration-500 shadow-[0_0_10px_rgba(255,122,0,0.3)]"
-                            style="width: 62.5%"></div>
-
+                        <div id="emp-tasks-progress-bar"
+                            class="h-full bg-[#FF7A00] transition-all duration-500 shadow-[0_0_10px_rgba(255,122,0,0.3)]"
+                            style="width: 0%"></div>
                     </div>
                     <div class="flex flex-row justify-between">
                         <p class="text-sm text-center text-[#6B6B6B] mb-2 font-medium ">0</p>
-                        <p class="text-sm text-center text-[#6B6B6B] mb-2 font-semibold ">62,5%</p>
-                        <p class="text-sm text-center text-[#6B6B6B] mb-2 font-medium">100</p>
+                        <p id="emp-tasks-progress-pct" class="text-sm text-center text-[#6B6B6B] mb-2 font-semibold ">0%</p>
+                        <p id="emp-tasks-progress-total" class="text-sm text-center text-[#6B6B6B] mb-2 font-medium">0</p>
                     </div>
                 </div>
             </div>
@@ -162,7 +161,10 @@
 
                             <div class="space-y-1">
                                 <p class="text-sm text-[#6B6B6B] font-medium">
-                                    <span x-text="task.dept"></span> • Назначил: {Имя Фамилия}
+                                    <span x-text="task.dept"></span> • Заявил:
+                                    <span class="text-white" x-text="task.initiator"></span>
+                                    • Назначил:
+                                    <span class="text-white" x-text="task.assigner"></span>
                                 </p>
 
                                 <p class="text-sm text-gray-300">
@@ -234,174 +236,10 @@
                     class="text-center text-xs font-bold uppercase text-[#6B6B6B] pb-2 border-b border-white/5 tracking-wider">
                     Внеплановые встречи</h3>
 
-                <div class="flex flex-col space-y-3 pr-2">
-                    <div class="p-4">
-                        <div
-                            class="flex space-y-3 items-start gap-3 pb-4 border-b border-white/5  hover:border-white/10 transition-colors">
-                            <div class="shrink-0 mt-3 ">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z"
-                                        stroke="#6B6B6B" stroke-width="2" stroke-linejoin="round" />
-                                    <path d="M3 10H21" stroke="#6B6B6B" stroke-width="2" />
-                                    <path d="M16 2V6" stroke="#0085FF" stroke-width="2" stroke-linecap="round" />
-                                    <path d="M8 2V6" stroke="#0085FF" stroke-width="2" stroke-linecap="round" />
-                                    <circle cx="7" cy="14" r="1" fill="#6B6B6B" />
-                                    <circle cx="12" cy="14" r="1" fill="#6B6B6B" />
-                                    <circle cx="17" cy="14" r="1" fill="#6B6B6B" />
-                                    <circle cx="7" cy="18" r="1" fill="#6B6B6B" />
-                                    <circle cx="12" cy="18" r="1" fill="#6B6B6B" />
-                                </svg>
-                            </div>
-
-                            <div class="flex flex-col gap-1">
-                                <p class="text-sm font-bold text-white leading-tight">Встреча с менеджером</p>
-
-                                <p class="text-[11px] text-gray-500 leading-normal">
-                                    Комментарий: необходимо обсудить план текущей работы
-                                </p>
-
-                                <p class="text-[11px] mt-1">
-                                    <span class="text-[#FF7A00] font-bold">Срок: сегодня, 15:00</span>
-                                    <span class="text-gray-600 ml-1">(хз как сделать авто обновление)</span>
-                                </p>
-                            </div>
-                        </div>
-
-                        <div
-                            class="flex space-y-3 items-start gap-3 pb-4 border-b border-white/5  hover:border-white/10 transition-colors">
-                            <div class="shrink-0 mt-3 ">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z"
-                                        stroke="#6B6B6B" stroke-width="2" stroke-linejoin="round" />
-                                    <path d="M3 10H21" stroke="#6B6B6B" stroke-width="2" />
-                                    <path d="M16 2V6" stroke="#0085FF" stroke-width="2" stroke-linecap="round" />
-                                    <path d="M8 2V6" stroke="#0085FF" stroke-width="2" stroke-linecap="round" />
-                                    <circle cx="7" cy="14" r="1" fill="#6B6B6B" />
-                                    <circle cx="12" cy="14" r="1" fill="#6B6B6B" />
-                                    <circle cx="17" cy="14" r="1" fill="#6B6B6B" />
-                                    <circle cx="7" cy="18" r="1" fill="#6B6B6B" />
-                                    <circle cx="12" cy="18" r="1" fill="#6B6B6B" />
-                                </svg>
-                            </div>
-
-                            <div class="flex flex-col gap-1">
-                                <p class="text-sm font-bold text-white leading-tight">Встреча с менеджером</p>
-
-                                <p class="text-[11px] text-gray-500 leading-normal">
-                                    Комментарий: необходимо обсудить план текущей работы
-                                </p>
-
-                                <p class="text-[11px] mt-1">
-                                    <span class="text-[#FF7A00] font-bold">Срок: сегодня, 15:00</span>
-                                    <span class="text-gray-600 ml-1">(хз как сделать авто обновление)</span>
-                                </p>
-                            </div>
-                        </div>
-
-                        <div
-                            class="flex space-y-3 items-start gap-3 pb-4 border-b border-white/5  hover:border-white/10 transition-colors">
-                            <div class="shrink-0 mt-3 ">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z"
-                                        stroke="#6B6B6B" stroke-width="2" stroke-linejoin="round" />
-                                    <path d="M3 10H21" stroke="#6B6B6B" stroke-width="2" />
-                                    <path d="M16 2V6" stroke="#0085FF" stroke-width="2" stroke-linecap="round" />
-                                    <path d="M8 2V6" stroke="#0085FF" stroke-width="2" stroke-linecap="round" />
-                                    <circle cx="7" cy="14" r="1" fill="#6B6B6B" />
-                                    <circle cx="12" cy="14" r="1" fill="#6B6B6B" />
-                                    <circle cx="17" cy="14" r="1" fill="#6B6B6B" />
-                                    <circle cx="7" cy="18" r="1" fill="#6B6B6B" />
-                                    <circle cx="12" cy="18" r="1" fill="#6B6B6B" />
-                                </svg>
-                            </div>
-
-                            <div class="flex flex-col gap-1">
-                                <p class="text-sm font-bold text-white leading-tight">Встреча с менеджером</p>
-
-                                <p class="text-[11px] text-gray-500 leading-normal">
-                                    Комментарий: необходимо обсудить план текущей работы
-                                </p>
-
-                                <p class="text-[11px] mt-1">
-                                    <span class="text-[#FF7A00] font-bold">Срок: сегодня, 15:00</span>
-                                    <span class="text-gray-600 ml-1">(хз как сделать авто обновление)</span>
-                                </p>
-                            </div>
-                        </div>
-
-                        <div
-                            class="flex space-y-3 items-start gap-3 pb-4 border-b border-white/5  hover:border-white/10 transition-colors">
-                            <div class="shrink-0 mt-3 ">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z"
-                                        stroke="#6B6B6B" stroke-width="2" stroke-linejoin="round" />
-                                    <path d="M3 10H21" stroke="#6B6B6B" stroke-width="2" />
-                                    <path d="M16 2V6" stroke="#0085FF" stroke-width="2" stroke-linecap="round" />
-                                    <path d="M8 2V6" stroke="#0085FF" stroke-width="2" stroke-linecap="round" />
-                                    <circle cx="7" cy="14" r="1" fill="#6B6B6B" />
-                                    <circle cx="12" cy="14" r="1" fill="#6B6B6B" />
-                                    <circle cx="17" cy="14" r="1" fill="#6B6B6B" />
-                                    <circle cx="7" cy="18" r="1" fill="#6B6B6B" />
-                                    <circle cx="12" cy="18" r="1" fill="#6B6B6B" />
-                                </svg>
-                            </div>
-
-                            <div class="flex flex-col gap-1">
-                                <p class="text-sm font-bold text-white leading-tight">Встреча с менеджером</p>
-
-                                <p class="text-[11px] text-gray-500 leading-normal">
-                                    Комментарий: необходимо обсудить план текущей работы
-                                </p>
-
-                                <p class="text-[11px] mt-1">
-                                    <span class="text-[#FF7A00] font-bold">Срок: сегодня, 15:00</span>
-                                    <span class="text-gray-600 ml-1">(хз как сделать авто обновление)</span>
-                                </p>
-                            </div>
-                        </div>
-
-                        <div
-                            class="flex space-y-3 items-start gap-3 pb-4 border-b border-white/5  hover:border-white/10 transition-colors">
-                            <div class="shrink-0 mt-3 ">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
-                                    xmlns="http://www.w3.org/2000/svg">
-                                    <path
-                                        d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z"
-                                        stroke="#6B6B6B" stroke-width="2" stroke-linejoin="round" />
-                                    <path d="M3 10H21" stroke="#6B6B6B" stroke-width="2" />
-                                    <path d="M16 2V6" stroke="#0085FF" stroke-width="2" stroke-linecap="round" />
-                                    <path d="M8 2V6" stroke="#0085FF" stroke-width="2" stroke-linecap="round" />
-                                    <circle cx="7" cy="14" r="1" fill="#6B6B6B" />
-                                    <circle cx="12" cy="14" r="1" fill="#6B6B6B" />
-                                    <circle cx="17" cy="14" r="1" fill="#6B6B6B" />
-                                    <circle cx="7" cy="18" r="1" fill="#6B6B6B" />
-                                    <circle cx="12" cy="18" r="1" fill="#6B6B6B" />
-                                </svg>
-                            </div>
-
-                            <div class="flex flex-col gap-1">
-                                <p class="text-sm font-bold text-white leading-tight">Встреча с менеджером</p>
-
-                                <p class="text-[11px] text-gray-500 leading-normal">
-                                    Комментарий: необходимо обсудить план текущей работы
-                                </p>
-
-                                <p class="text-[11px] mt-1">
-                                    <span class="text-[#FF7A00] font-bold">Срок: сегодня, 15:00</span>
-                                    <span class="text-gray-600 ml-1">(хз как сделать авто обновление)</span>
-                                </p>
-                            </div>
-                        </div>
-
-                    </div>
+                <div id="emp-meetings-list" class="flex flex-col space-y-3 pr-2 mt-4">
+                    <p class="text-xs text-[#6B6B6B] text-center p-4">Запланированных встреч нет</p>
+                </div>
+            </div>
                 </div>
             </div>
         </div>

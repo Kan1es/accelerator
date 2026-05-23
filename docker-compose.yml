@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: vector
       POSTGRES_PASSWORD: vector
     ports:
-      - "5432:5432"
+      - "15432:5432"
     volumes:
       - vector_pgdata:/var/lib/postgresql/data
     healthcheck:

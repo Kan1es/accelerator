@@ -5,11 +5,33 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db.models import Prefetch
 
-from .models import Employee, WorkShift, Ticket
+from .models import Employee, WorkShift, Ticket, TicketAssignment
 from .serializers import (
-    MobileEmployeeSerializer, ErrorResponseSerializer, MobileTicketSerializer, 
+    MobileEmployeeSerializer, ErrorResponseSerializer, MobileTicketSerializer,
     SuccessResponseSerializer, PredictRequestSerializer, PredictResponseSerializer
 )
+
+
+def _latest_assigner_map(ticket_ids):
+    """
+    Возвращает {ticket_id: assigner_name or None} по последнему TicketAssignment.
+    Если assigner=None — значит тикет был распределён автоназначением (ИИ).
+    """
+    if not ticket_ids:
+        return {}
+    qs = (
+        TicketAssignment.objects
+        .filter(ticket_id__in=ticket_ids)
+        .select_related('assigner')
+        .order_by('ticket_id', '-assigned_time')
+    )
+    result = {}
+    for a in qs:
+        # Берём только первый (самый свежий) для каждого ticket_id.
+        if a.ticket_id in result:
+            continue
+        result[a.ticket_id] = a.assigner.name if a.assigner else None
+    return result
 from .utils import notification
 from .services.ml_client import classify_text
 
@@ -42,7 +64,7 @@ def mobile_employees_list(request):
     active_shifts = WorkShift.objects.filter(is_active=True)
     active_tickets = Ticket.objects.filter(status='in_progress')
 
-    employees = employees.prefetch_related(
+    employees = employees.select_related('role').prefetch_related(
         Prefetch('workshift_set', queryset=active_shifts, to_attr='active_shift'),
         Prefetch('assigned_tickets', queryset=active_tickets, to_attr='current_tickets')
     )
@@ -89,10 +111,12 @@ def mobile_tickets_list(request):
 
     active_statuses = ['open', 'assigned', 'in_progress', 'resolved']
 
-    tickets = Ticket.objects.filter(
+    tickets = list(Ticket.objects.filter(
         category__department=department,
         status__in=active_statuses
-    ).select_related('assignee', 'category').order_by('-priority', '-created_at')
+    ).select_related('assignee', 'category', 'creator').order_by('-priority', '-created_at'))
+
+    assigner_map = _latest_assigner_map([t.id for t in tickets])
 
     result = []
     for ticket in tickets:
@@ -102,6 +126,8 @@ def mobile_tickets_list(request):
             'description': ticket.description,
             'assignee_id': ticket.assignee.id if ticket.assignee else None,
             'assignee_name': ticket.assignee.name if ticket.assignee else None,
+            'creator_name': ticket.creator.name if ticket.creator else None,
+            'assigner_name': assigner_map.get(ticket.id),  # None => назначил ИИ
             'priority': ticket.priority,
             'category_name': ticket.category.name if ticket.category else None,
             'created_at': ticket.created_at.isoformat() if ticket.created_at else None,

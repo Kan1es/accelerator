@@ -93,6 +93,8 @@ class MobileTicketSerializer(serializers.Serializer):
     description = serializers.CharField()
     assignee_id = serializers.IntegerField(allow_null=True, required=False)
     assignee_name = serializers.CharField(allow_null=True)
+    creator_name = serializers.CharField(allow_null=True, required=False)
+    assigner_name = serializers.CharField(allow_null=True, required=False)
     priority = serializers.IntegerField()
     category_name = serializers.CharField(allow_null=True, required=False)
     created_at = serializers.CharField(allow_null=True, required=False)

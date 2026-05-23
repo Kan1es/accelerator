@@ -256,10 +256,30 @@ def my_tickets(request):
         return Response({'error': 'Пользователь не привязан к сотруднику'},
                         status=status.HTTP_400_BAD_REQUEST)
 
-    active_statuses = ['open', 'assigned', 'in_progress', 'resolved']
-    tickets = Ticket.objects.filter(
-        assignee=me, status__in=active_statuses,
-    ).select_related('category', 'creator').order_by('-priority', '-created_at')
+    # Менеджер может запросить ?assignee=<id>, чтобы посмотреть тикеты
+    # произвольного сотрудника (карточка сотрудника на manager_workers.html).
+    assignee_param = request.query_params.get('assignee')
+    target = me
+    if assignee_param:
+        if not _is_manager(me):
+            return Response({'error': 'Параметр assignee доступен только руководителю'},
+                            status=status.HTTP_403_FORBIDDEN)
+        try:
+            target = Employee.objects.get(id=int(assignee_param))
+        except (Employee.DoesNotExist, ValueError, TypeError):
+            return Response({'error': 'Сотрудник не найден'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+    # Возвращаем и завершённые: фронту нужны они для расчёта прогресса.
+    all_statuses = ['open', 'assigned', 'in_progress', 'resolved', 'closed', 'expired']
+    tickets = list(Ticket.objects.filter(
+        assignee=target, status__in=all_statuses,
+    ).select_related('category', 'creator').order_by('-priority', '-created_at'))
+
+    # Подтянем имя того, кто реально распределил тикет (assigner из TicketAssignment).
+    # None означает, что назначил автоматический агент (ИИ-роутер).
+    from .views_mobile import _latest_assigner_map
+    assigner_map = _latest_assigner_map([t.id for t in tickets])
 
     return Response(
         [
@@ -270,6 +290,9 @@ def my_tickets(request):
                 'priority': t.priority,
                 'category_name': t.category.name if t.category else None,
                 'creator_name': t.creator.name if t.creator else None,
+                'assigner_name': assigner_map.get(t.id),  # None => назначил ИИ
+                'assignee_id': target.id,
+                'assignee_name': target.name,
                 'created_at': t.created_at.isoformat() if t.created_at else None,
                 'deadline': t.deadline.isoformat() if t.deadline else None,
             }

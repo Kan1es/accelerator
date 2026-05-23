@@ -255,16 +255,78 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch { /* ничего */ }
     })();
 
+    // Приветствие на employee_dashboard.html + карточка профиля на employee_tasks.html.
+    (async () => {
+        if (!window.api || !window.api.getToken()) return;
+        const greetEl = document.getElementById('emp-greeting');
+        const nameEl = document.getElementById('emp-name');                  // employee_dashboard
+        const tasksNameEl = document.getElementById('emp-tasks-name');       // employee_tasks
+        const tasksRoleEl = document.getElementById('emp-tasks-role');
+        const tasksAvatarEl = document.getElementById('emp-tasks-avatar');
+
+        if (greetEl) {
+            const h = new Date().getHours();
+            greetEl.textContent =
+                h < 6  ? 'Доброй ночи' :
+                h < 12 ? 'Доброе утро' :
+                h < 18 ? 'Добрый день' :
+                         'Добрый вечер';
+        }
+
+        let me = null;
+        try {
+            me = await window.api.get('/api/auth/me/');
+        } catch (err) {
+            const s = window.api.getSession();
+            if (s.name || s.login) {
+                me = { name: s.name, login: s.login, role: s.role };
+            }
+        }
+        if (!me) return;
+
+        const firstName = (me.name || '').trim().split(/\s+/)[0] || (me.login || '—');
+        const initials = (me.name || '?').trim().split(/\s+/)
+            .map(s => s[0] || '').slice(0, 2).join('').toUpperCase() || '?';
+
+        if (nameEl) nameEl.textContent = firstName;
+        if (tasksNameEl) tasksNameEl.textContent = me.name || me.login || '—';
+        if (tasksRoleEl) tasksRoleEl.textContent =
+            me.role === 'manager' ? 'Руководитель' : 'Сотрудник';
+        if (tasksAvatarEl) tasksAvatarEl.textContent = initials;
+    })();
+
     // Подгрузка задач для employee_dashboard.html
     (async () => {
         if (!window.api || !window.api.getToken()) return;
         const taskList = document.getElementById('emp-task-list');
         const attention = document.getElementById('emp-attention-list');
-        if (!taskList && !attention) return;
+        const countEl = document.getElementById('emp-active-count');
+        const wordEl = document.getElementById('emp-active-word');
+        const barEl = document.getElementById('emp-progress-bar');
+        const labelEl = document.getElementById('emp-progress-label');
+        const totalEl = document.getElementById('emp-progress-total');
+        if (!taskList && !attention && !countEl && !barEl) return;
 
         try {
             const tickets = await window.api.get('/api/tickets/my/');
             const items = tickets || [];
+
+            // Счётчик активных + прогресс-бар «выполнено / всего».
+            const active = items.filter(t => t.status === 'open' || t.status === 'assigned' || t.status === 'in_progress');
+            const done = items.filter(t => t.status === 'resolved' || t.status === 'closed');
+            const total = items.length;
+            if (countEl) countEl.textContent = String(active.length);
+            if (wordEl) wordEl.textContent = _pluralTasks(active.length);
+            if (totalEl) totalEl.textContent = String(total);
+            if (barEl) {
+                const pct = total > 0 ? Math.round(done.length / total * 100) : 0;
+                barEl.style.width = pct + '%';
+            }
+            if (labelEl) {
+                labelEl.textContent = total > 0
+                    ? `Выполнено ${done.length} из ${total}`
+                    : 'Общая шкала выполненных задач';
+            }
 
             if (taskList) {
                 if (items.length === 0) {
@@ -321,6 +383,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function _emp_statusLabel(s) {
         return ({open:'Открыта', assigned:'Назначена', in_progress:'В работе',
                  resolved:'Выполнена', closed:'Закрыта', expired:'Просрочена'})[s] || s;
+    }
+    function _pluralTasks(n) {
+        const abs = Math.abs(n) % 100;
+        const last = abs % 10;
+        if (abs >= 11 && abs <= 14) return 'задач';
+        if (last === 1) return 'задача';
+        if (last >= 2 && last <= 4) return 'задачи';
+        return 'задач';
     }
 
     function openShiftModal(step = 1) {
@@ -441,10 +511,24 @@ const TICKET_STATUS_TO_UI = {
 };
 
 function _ticketToTask(t) {
+    // Если тикет ещё в очереди (status=open, исполнителя нет) — это значит, что
+    // на момент создания все исполнители отдела были заняты. Очередь подхватит
+    // его автоматически, как только кто-то освободится.
+    const inQueue = t.status === 'open' && !t.assignee_name;
+
     return {
         id: t.id,
         title: t.category_name || 'Без категории',
-        dept: t.assignee_name ? `Исполнитель: ${t.assignee_name}` : 'Не назначен',
+        dept: t.assignee_name
+            ? `Исполнитель: ${t.assignee_name}`
+            : (inQueue ? '🕒 В очереди — ждём свободного исполнителя' : 'Не назначен'),
+        // Кто заявил о проблеме (creator) и кто реально распределил исполнителя
+        // (assigner из TicketAssignment). Если ещё никто не назначен — диспетчер
+        // ещё не определён (тикет в очереди ИИ-агента).
+        initiator: t.creator_name || '—',
+        assigner: inQueue
+            ? '🤖 ИИ-агент «Вектор» (ожидание)'
+            : (t.assigner_name || '🤖 ИИ-агент «Вектор»'),
         comment: t.description,
         status: TICKET_STATUS_TO_UI[t.status] || 'assigned',
         rawStatus: t.status,
@@ -477,8 +561,13 @@ function taskManager() {
             this.loading = true;
             this.loadError = null;
             try {
-                const list = await window.api.get('/api/mobile/tickets/');
-                this.tasks = (list || []).map(_ticketToTask);
+                // «Мои задачи» = тикеты, где текущий пользователь — assignee.
+                // /api/tickets/my/ отдаёт именно их (включая resolved/closed для
+                // расчёта прогресс-бара слева).
+                const myList = await window.api.get('/api/tickets/my/');
+                const items = myList || [];
+                this._updateProfileProgress(items);
+                this.tasks = items.map(_ticketToTask);
             } catch (err) {
                 this.loadError = err.message || 'Не удалось загрузить задачи';
                 this.tasks = [];
@@ -487,6 +576,23 @@ function taskManager() {
             }
         },
 
+        _updateProfileProgress(myTickets) {
+            // Шкала прогресса в карточке профиля на employee_tasks.html.
+            const wrap = document.getElementById('emp-tasks-progress-wrap');
+            const bar = document.getElementById('emp-tasks-progress-bar');
+            const pctEl = document.getElementById('emp-tasks-progress-pct');
+            const totalEl = document.getElementById('emp-tasks-progress-total');
+            if (!bar && !pctEl && !totalEl) return;
+
+            const total = myTickets.length;
+            const done = myTickets.filter(t =>
+                t.status === 'resolved' || t.status === 'closed').length;
+            const pct = total > 0 ? Math.round(done / total * 100) : 0;
+            if (bar) bar.style.width = pct + '%';
+            if (pctEl) pctEl.textContent = pct + '%';
+            if (totalEl) totalEl.textContent = String(total);
+            if (wrap) wrap.title = `${done} из ${total} задач`;
+        },
 
         // Функция расчета оставшегося времени
         getTimeUntil(targetTime) {

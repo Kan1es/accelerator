@@ -14,6 +14,17 @@ from transformers import AutoModel, AutoTokenizer
 import psycopg
 from psycopg_pool import ConnectionPool
 
+# Попытка загрузить переменные окружения из .env файла Django-проекта
+try:
+    from dotenv import load_dotenv
+    _BASE = os.path.dirname(__file__)
+    # Загружаем .env из папки на уровень выше
+    dotenv_path = os.path.join(os.path.dirname(_BASE), ".env")
+    if os.path.isfile(dotenv_path):
+        load_dotenv(dotenv_path)
+except ImportError:
+    pass
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
@@ -29,19 +40,111 @@ MODEL_CHECKPOINT  = os.getenv("MODEL_CHECKPOINT",  os.path.join(_BASE, "artifact
 CLASS_MAPPING     = os.getenv("CLASS_MAPPING",     os.path.join(_BASE, "artifacts", "class_mapping.json"))
 CATEGORY_NAMES    = os.getenv("CATEGORY_NAMES",    os.path.join(_BASE, "artifacts", "category_names.json"))
 RUBERT_MODEL_NAME = os.getenv("RUBERT_MODEL_NAME", "cointegrated/rubert-tiny2")
-NUM_CLASSES_ENV   = int(os.getenv("NUM_CLASSES", "14"))
+NUM_CLASSES_ENV   = int(os.getenv("NUM_CLASSES", "15"))
 DEVICE_ENV        = os.getenv("DEVICE", "auto")
 INFERENCE_TIMEOUT = float(os.getenv("INFERENCE_TIMEOUT", "30.0"))  # секунды
 FEEDBACK_DB_PATH  = os.getenv("FEEDBACK_DB_PATH",  os.path.join(_BASE, "feedback_buffer.db"))
 FEEDBACK_DB_DSN = os.getenv("FEEDBACK_DB_DSN") or (
-    f"host={os.getenv('FEEDBACK_DB_HOST', 'localhost')} "
-    f"port={os.getenv('FEEDBACK_DB_PORT', '5432')} "
-    f"dbname={os.getenv('FEEDBACK_DB_NAME', 'vector')} "
-    f"user={os.getenv('FEEDBACK_DB_USER', 'postgres')} "
-    f"password={os.getenv('FEEDBACK_DB_PASSWORD', 'postgres')}"
+    f"host={os.getenv('FEEDBACK_DB_HOST', os.getenv('POSTGRES_HOST', 'localhost'))} "
+    f"port={os.getenv('FEEDBACK_DB_PORT', os.getenv('POSTGRES_PORT', '5432'))} "
+    f"dbname={os.getenv('FEEDBACK_DB_NAME', os.getenv('POSTGRES_DB', 'vector'))} "
+    f"user={os.getenv('FEEDBACK_DB_USER', os.getenv('POSTGRES_USER', 'postgres'))} "
+    f"password={os.getenv('FEEDBACK_DB_PASSWORD', os.getenv('POSTGRES_PASSWORD', 'postgres'))}"
 )
 db_pool: ConnectionPool | None = None
 MAX_LENGTH = 512
+
+# Регулярное выражение для быстрого жесткого префильтра цензуры (загружается динамически из censored_words.json)
+import re
+
+CENSOR_REGEX = None
+
+def load_censored_regex():
+    global CENSOR_REGEX
+    try:
+        json_path = os.path.join(_BASE, "artifacts", "censored_words.json")
+        if os.path.isfile(json_path):
+            with open(json_path, "r", encoding="utf-8") as f:
+                censored_words = json.load(f)
+            
+            # Набор окончаний для отсечения при поиске основы слова
+            ENDINGS = [
+                'ами', 'ями', 'иями',
+                'ому', 'ему', 'ыми', 'ими',
+                'ого', 'его', 'ых', 'их', 'ые', 'ие', 'ое', 'ая', 'яя', 'ее',
+                'ом', 'ем', 'ой', 'ей', 'ов', 'ев', 'ей', 'ам', 'ям', 'ах', 'ях',
+                'ть', 'ать', 'ить', 'еть', 'уть', 'ять',
+                'а', 'я', 'о', 'е', 'ы', 'и', 'у', 'ю', 'ь'
+            ]
+            ENDINGS = sorted(ENDINGS, key=len, reverse=True)
+
+            def stem_word(word: str) -> str:
+                word = word.lower().strip()
+                if not word:
+                    return ""
+                if word == "сво":
+                    return "сво"
+                if word == "plan":
+                    return "plan"
+                
+                # Отсекаем окончания, если остаётся хотя бы 3 символа
+                for ending in ENDINGS:
+                    if word.endswith(ending) and len(word) - len(ending) >= 3:
+                        word = word[:-len(ending)]
+                        break
+                
+                return re.escape(word) + "[а-я]*"
+
+            def stem_phrase(phrase: str) -> str:
+                parts = phrase.split()
+                stemmed_parts = []
+                for p in parts:
+                    if p.strip():
+                        stemmed_parts.append(stem_word(p))
+                return r"\s+".join(stemmed_parts)
+
+            # Преобразуем каждую фразу из датасета в морфологический паттерн
+            escaped_patterns = []
+            for w in censored_words:
+                pattern_part = stem_phrase(w)
+                if pattern_part:
+                    escaped_patterns.append(pattern_part)
+            
+            # Дополнительные жесткие правила для морфологии
+            custom_rules = [
+                r"черт[а-я]*", r"чертя[а-я]*", r"войн[а-я]*", r"убийст[а-я]*", 
+                r"мобилиз[а-я]*", r"зеленск[а-я]*", r"гитлер[а-я]*", r"дебил[а-я]*",
+                r"даун[а-я]*", r"урод[а-я]*", r"тварь[а-я]*", r"козел", r"козл[а-я]*",
+                r"лох[а-я]*", r"лошь[а-я]*", r"чмо[а-я]*", r"придуро[к-я]*", r"идиот[а-я]*",
+                r"сволоч[ь-я]*", r"ублюд[оа-я]*", r"creatin[a-ya]*", r"сук[а-я]*"
+            ]
+            escaped_patterns.extend(custom_rules)
+            
+            # Собираем регулярное выражение с границами слов
+            pattern = r"\b(" + "|".join(escaped_patterns) + r")\b"
+            CENSOR_REGEX = re.compile(pattern, re.IGNORECASE)
+            logger.info("Успешно загружен динамический префильтр цензуры: %d фраз с морфологией", len(censored_words))
+        else:
+            logger.warning("Файл censored_words.json не найден. Используется базовый набор.")
+            CENSOR_REGEX = re.compile(
+                r'\b(сво|война|войны|убийств[оа-я]*|убить|зарезать|пристрелить|терроризм|теракт|бомба|взрыв)\b',
+                re.IGNORECASE
+            )
+    except Exception as exc:
+        logger.error("Ошибка при сборке динамического префильтра: %s", exc)
+        CENSOR_REGEX = re.compile(
+            r'\b(сво|война|войны|убийств[оа-я]*|убить|зарезать|пристрелить|терроризм|теракт|бомба|взрыв)\b',
+            re.IGNORECASE
+        )
+
+# Инициализируем префильтр при старте
+load_censored_regex()
+
+def is_censored_hard(text: str) -> bool:
+    if CENSOR_REGEX is None:
+        return False
+    return bool(CENSOR_REGEX.search(text))
+
 
 
 # ─── Состояние модели (dataclass вместо глобальных переменных) ────────────────
@@ -387,6 +490,18 @@ async def predict(request: PredictRequest, http_request: Request):
 
     text = request.text.strip()
 
+    # Быстрый жесткий префильтр цензуры
+    if is_censored_hard(text):
+        logger.info("Текст заблокирован жестким префильтром цензуры: '%s'", text)
+        category_db_id = 15
+        category_name = state.category_names.get(category_db_id, "Цензура")
+        return PredictResponse(
+            category_id=14, # Индекс класса 14 для категории 15
+            category_db_id=category_db_id,
+            category_name=category_name,
+            confidence=1.0,
+        )
+
     try:
         # FIX: inference в executor — не блокирует event loop
         # FIX: таймаут на inference
@@ -431,14 +546,19 @@ async def submit_feedback(payload: FeedbackRequest, http_request: Request):
 
     if state.is_ready:
         try:
-            loop = asyncio.get_running_loop()
-            category_index, conf = await asyncio.wait_for(
-                loop.run_in_executor(None, _run_inference, state, payload.text),
-                timeout=INFERENCE_TIMEOUT,
-            )
-            predicted_id = state.index_to_db_id.get(category_index, category_index + 1)
-            confidence = round(conf, 4)
-            is_correct = (predicted_id == payload.true_category_id)
+            if is_censored_hard(payload.text):
+                predicted_id = 15
+                confidence = 1.0
+                is_correct = (predicted_id == payload.true_category_id)
+            else:
+                loop = asyncio.get_running_loop()
+                category_index, conf = await asyncio.wait_for(
+                    loop.run_in_executor(None, _run_inference, state, payload.text),
+                    timeout=INFERENCE_TIMEOUT,
+                )
+                predicted_id = state.index_to_db_id.get(category_index, category_index + 1)
+                confidence = round(conf, 4)
+                is_correct = (predicted_id == payload.true_category_id)
         except Exception as exc:
             logger.warning("Не удалось получить предсказание для фидбэка: %s", exc)
 

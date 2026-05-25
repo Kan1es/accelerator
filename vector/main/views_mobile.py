@@ -54,11 +54,12 @@ def mobile_employees_list(request):
         return Response({'error': 'Пользователь не привязан к сотруднику'},
                         status=status.HTTP_400_BAD_REQUEST)
 
-    if not department:
+    if not department and not request.user.is_staff:
         return Response({'error': 'У руководителя не указан отдел'},
                         status=status.HTTP_400_BAD_REQUEST)
 
-    employees = Employee.objects.filter(department=department)
+    # Суперадмин без отдела видит всех сотрудников
+    employees = Employee.objects.all() if not department else Employee.objects.filter(department=department)
 
     # Предзагрузка активных смен и текущих задач для избежания N+1 запросов
     active_shifts = WorkShift.objects.filter(is_active=True)
@@ -105,16 +106,22 @@ def mobile_tickets_list(request):
         return Response({'error': 'Пользователь не привязан к сотруднику'},
                         status=status.HTTP_400_BAD_REQUEST)
 
-    if not department:
+    if not department and not request.user.is_staff:
         return Response({'error': 'У сотрудника не указан отдел'},
                         status=status.HTTP_400_BAD_REQUEST)
 
     active_statuses = ['open', 'assigned', 'in_progress', 'resolved']
 
-    tickets = list(Ticket.objects.filter(
-        category__department=department,
-        status__in=active_statuses
-    ).select_related('assignee', 'category', 'creator').order_by('-priority', '-created_at'))
+    # Суперадмин без отдела видит тикеты всех отделов
+    if not department:
+        tickets = list(Ticket.objects.filter(
+            status__in=active_statuses
+        ).select_related('assignee', 'category', 'creator').order_by('-priority', '-created_at'))
+    else:
+        tickets = list(Ticket.objects.filter(
+            category__department=department,
+            status__in=active_statuses
+        ).select_related('assignee', 'category', 'creator').order_by('-priority', '-created_at'))
 
     assigner_map = _latest_assigner_map([t.id for t in tickets])
 

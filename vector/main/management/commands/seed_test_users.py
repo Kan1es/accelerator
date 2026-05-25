@@ -28,7 +28,10 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         with transaction.atomic():
-            dept, _ = Department.objects.get_or_create(name='Цех №1', defaults={'parent': None})
+            # Используем "Ремонтно-механический цех" — отдел, к которому привязана
+            # категория "Неисправность оборудования" (id=1, самая частая по ML).
+            # Если CSV ещё не загружен — создаём отдел с таким именем.
+            dept, _ = Department.objects.get_or_create(name='Ремонтно-механический цех', defaults={'parent': None})
             role_emp, _ = Role.objects.get_or_create(name='Сотрудник', defaults={'power': 1})
             role_mgr, _ = Role.objects.get_or_create(name='Руководитель отдела', defaults={'power': 5})
 

@@ -270,14 +270,18 @@ def my_tickets(request):
             return Response({'error': 'Сотрудник не найден'},
                             status=status.HTTP_404_NOT_FOUND)
 
-    # Возвращаем и завершённые: фронту нужны они для расчёта прогресса.
     all_statuses = ['open', 'assigned', 'in_progress', 'resolved', 'closed', 'expired']
-    tickets = list(Ticket.objects.filter(
-        assignee=target, status__in=all_statuses,
-    ).select_related('category', 'creator').order_by('-priority', '-created_at'))
 
-    # Подтянем имя того, кто реально распределил тикет (assigner из TicketAssignment).
-    # None означает, что назначил автоматический агент (ИИ-роутер).
+    # Суперадмин (is_staff) видит все тикеты без фильтра по исполнителю.
+    if request.user.is_staff and not assignee_param:
+        tickets = list(Ticket.objects.filter(
+            status__in=all_statuses,
+        ).select_related('category', 'creator', 'assignee').order_by('-priority', '-created_at'))
+    else:
+        tickets = list(Ticket.objects.filter(
+            assignee=target, status__in=all_statuses,
+        ).select_related('category', 'creator', 'assignee').order_by('-priority', '-created_at'))
+
     from .views_mobile import _latest_assigner_map
     assigner_map = _latest_assigner_map([t.id for t in tickets])
 
@@ -290,9 +294,9 @@ def my_tickets(request):
                 'priority': t.priority,
                 'category_name': t.category.name if t.category else None,
                 'creator_name': t.creator.name if t.creator else None,
-                'assigner_name': assigner_map.get(t.id),  # None => назначил ИИ
-                'assignee_id': target.id,
-                'assignee_name': target.name,
+                'assigner_name': assigner_map.get(t.id),
+                'assignee_id': t.assignee.id if t.assignee else None,
+                'assignee_name': t.assignee.name if t.assignee else None,
                 'created_at': t.created_at.isoformat() if t.created_at else None,
                 'deadline': t.deadline.isoformat() if t.deadline else None,
             }

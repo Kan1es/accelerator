@@ -165,6 +165,17 @@ window.addUserMessage = function(text) {
     chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
 }
 
+let _categoriesCache = null;
+async function _loadCategories() {
+    if (_categoriesCache) return _categoriesCache;
+    try {
+        _categoriesCache = await window.api.get('/api/categories/');
+    } catch (_) {
+        _categoriesCache = [];
+    }
+    return _categoriesCache;
+}
+
 window.sendMessage = async function() {
     const input = document.getElementById('user-input');
     if (!input) return;
@@ -183,14 +194,52 @@ window.sendMessage = async function() {
     addBotMessage('Анализирую обращение…');
 
     try {
-        const data = await window.api.post('/api/agent/classify/', { text });
+        const [data, categories] = await Promise.all([
+            window.api.post('/api/agent/classify/', { text }),
+            _loadCategories(),
+        ]);
+
         const confidencePct = Math.round((data.confidence || 0) * 100);
-        addBotMessage(
-            `Заявка №${data.ticket_id} создана.<br>` +
-            `Категория: <span class="text-[#FF7A00]">${data.category}</span> ` +
-            `(уверенность ${confidencePct}%).<br>` +
-            `Передал её в работу — отслеживайте статус в личном кабинете.`
-        );
+        const rcId = `rc-${data.ticket_id}`;
+
+        const optionsHTML = categories.map(c =>
+            `<option value="${c.id}">${c.name}</option>`
+        ).join('');
+
+        const reclassifyBlock = categories.length > 0 ? `
+            <div id="${rcId}-block" class="bg-[#1a1a1a] border border-[#2A2A2A] p-3 rounded-[16px] space-y-2">
+                <p class="text-xs text-[#6B6B6B]">Категория определена неверно? Исправьте вручную:</p>
+                <div class="flex gap-2">
+                    <select id="${rcId}-select" class="flex-1 bg-[#0d0d0d] border border-[#2A2A2A] text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-[#FF7A00]">
+                        <option value="">— выберите категорию —</option>
+                        ${optionsHTML}
+                    </select>
+                    <button onclick="window.reclassifyTicket(${data.ticket_id}, '${rcId}')"
+                        class="bg-[#FF7A00] hover:bg-[#FF9A3C] text-white text-sm px-4 py-2 rounded-lg transition-colors whitespace-nowrap">
+                        Изменить
+                    </button>
+                </div>
+            </div>` : '';
+
+        const chatBox = document.getElementById('chat-box');
+        chatBox.insertAdjacentHTML('beforeend', `
+            <div class="flex gap-4 md:gap-6 animate-gentle self-start max-w-[80%]">
+                <div class="w-10 h-10 md:w-12 md:h-12 shrink-0 bg-[#151515] border border-[#2A2A2A] rounded-xl flex items-center justify-center">
+                    <img src="images/ВЕКТОР.svg" class="w-6 h-6 md:w-8 md:h-8">
+                </div>
+                <div class="space-y-2">
+                    <p class="text-sm text-[#FF7A00] font-semibold">ВЕКТОР</p>
+                    <div class="bg-[#151515] border border-[#2A2A2A] p-4 rounded-[20px] rounded-tl-none text-sm md:text-md leading-relaxed text-white">
+                        Заявка №${data.ticket_id} создана.<br>
+                        Категория: <span class="text-[#FF7A00]" id="${rcId}-cat">${data.category}</span>
+                        (уверенность ${confidencePct}%).<br>
+                        Передал её в работу — отслеживайте статус в личном кабинете.
+                    </div>
+                    ${reclassifyBlock}
+                </div>
+            </div>
+        `);
+        chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
     } catch (err) {
         if (err.isTimeout) {
             addBotMessage('Сервер не ответил вовремя. Попробуйте ещё раз чуть позже.');
@@ -204,6 +253,41 @@ window.sendMessage = async function() {
             // api.js уже редиректит на /login.html
         } else {
             addBotMessage(`Ошибка при отправке: ${err.message || 'неизвестно'}`);
+        }
+    }
+}
+
+window.reclassifyTicket = async function(ticketId, rcId) {
+    const select = document.getElementById(`${rcId}-select`);
+    if (!select || !select.value) {
+        if (select) select.style.borderColor = '#FF4444';
+        return;
+    }
+
+    const btn = select.parentElement.querySelector('button');
+    btn.disabled = true;
+    btn.textContent = '…';
+
+    try {
+        const data = await window.api.patch(`/api/tickets/${ticketId}/reclassify/`, {
+            category_id: parseInt(select.value),
+        });
+
+        const catSpan = document.getElementById(`${rcId}-cat`);
+        if (catSpan) catSpan.textContent = data.category;
+
+        const block = document.getElementById(`${rcId}-block`);
+        if (block) {
+            block.innerHTML = `<p class="text-xs text-green-400">Категория изменена на: <strong>${data.category}</strong></p>`;
+        }
+    } catch (err) {
+        btn.disabled = false;
+        btn.textContent = 'Изменить';
+        const block = document.getElementById(`${rcId}-block`);
+        if (block && !block.querySelector('.rc-err')) {
+            block.insertAdjacentHTML('beforeend',
+                `<p class="rc-err text-xs text-red-400">${err.message || 'Ошибка при изменении'}</p>`
+            );
         }
     }
 }

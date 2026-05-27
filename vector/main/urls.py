@@ -5,7 +5,7 @@ from .views_mobile import mobile_employees_list, mobile_tickets_list, mobile_not
 from .views_auth import login_view, logout_view, me_view
 from .views_tickets import (
     create_ticket, list_employees, list_categories, my_tickets,
-    list_notifications, profile_summary,
+    list_notifications, profile_summary, reclassify_ticket,
 )
 
 urlpatterns = [
@@ -21,6 +21,7 @@ urlpatterns = [
     path('api/shift/start/', shift_start, name='shift_start'),
     path('api/shift/end/', shift_end, name='shift_end'),
     path('api/employee/status/', employee_status, name='employee_status'),
+    path('api/tickets/<int:id>/reclassify/', reclassify_ticket, name='reclassify-ticket'),
     path('api/tickets/<int:id>/accept/', accept_ticket, name='accept-ticket'),
     path('api/tickets/<int:id>/decline/', decline_ticket, name='decline-ticket'),
     path('api/tickets/<int:id>/complete/', complete_ticket, name='complete-ticket'),

@@ -10,7 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
-from .models import Ticket, Employee, Category, TicketAssignment, Notification
+from .models import Ticket, Employee, Category, TicketAssignment, Notification, TaskQueue
 
 
 def _is_manager(employee: Employee) -> bool:
@@ -304,3 +304,88 @@ def my_tickets(request):
         ],
         status=status.HTTP_200_OK,
     )
+
+
+@swagger_auto_schema(
+    method='patch',
+    operation_description="Переклассифицировать тикет: изменить категорию вручную. Доступно создателю тикета или суперадмину.",
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        required=['category_id'],
+        properties={
+            'category_id': openapi.Schema(type=openapi.TYPE_INTEGER),
+        },
+    ),
+    tags=['Tickets'],
+)
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def reclassify_ticket(request, id):
+    try:
+        employee = request.user.employee
+    except (AttributeError, Employee.DoesNotExist):
+        return Response({'error': 'Пользователь не привязан к сотруднику'},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        ticket = Ticket.objects.select_related('category', 'assignee', 'creator').get(id=id)
+    except Ticket.DoesNotExist:
+        return Response({'error': 'Тикет не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+    if ticket.creator != employee and not request.user.is_staff:
+        return Response({'error': 'Нет прав для переклассификации'},
+                        status=status.HTTP_403_FORBIDDEN)
+
+    if ticket.status in ('closed', 'resolved', 'expired'):
+        return Response({'error': 'Нельзя переклассифицировать закрытый тикет'},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    cat_id = request.data.get('category_id')
+    if not cat_id:
+        return Response({'error': 'category_id обязателен'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        new_category = Category.objects.get(id=int(cat_id))
+    except (Category.DoesNotExist, ValueError, TypeError):
+        return Response({'error': 'Категория не найдена'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if ticket.category_id == new_category.id:
+        return Response({
+            'ticket_id': ticket.id,
+            'category': new_category.name,
+            'category_id': new_category.id,
+            'status': ticket.status,
+        })
+
+    with transaction.atomic():
+        if ticket.assignee:
+            old_assignee = ticket.assignee
+            old_assignee.is_busy = False
+            old_assignee.save(update_fields=['is_busy'])
+            TicketAssignment.objects.filter(ticket=ticket, is_resolved=False).update(
+                is_resolved=True, resolved_time=timezone.now()
+            )
+            ticket.assignee = None
+            ticket.status = 'open'
+
+        ticket.category = new_category
+        ticket.save()
+
+        TaskQueue.objects.filter(ticket=ticket).delete()
+
+        from .services.queue_service import push_to_queue
+        push_to_queue(ticket, ticket.priority)
+
+    from .utils import auto_assign_from_queue
+    auto_assign_from_queue()
+
+    from .tasks import feedback_for_ml
+    feedback_for_ml.delay(ticket.id)
+
+    ticket.refresh_from_db()
+    return Response({
+        'ticket_id': ticket.id,
+        'category': new_category.name,
+        'category_id': new_category.id,
+        'status': ticket.status,
+    })

@@ -14,7 +14,7 @@ from .serializers import ShiftEndResponseSerializer, ErrorResponseSerializer, Sh
     TicketCompleteResponseSerializer
 
 from .tasks import monitor_deadline, feedback_for_ml
-from .utils import auto_assign_from_queue, notify_manager, send_websocket_notification
+from .utils import auto_assign_from_queue, notify_manager, send_websocket_notification, ws_notify_dept_managers
 
 
 def _is_manager(employee):
@@ -247,6 +247,12 @@ def accept_ticket(request, id):
 
     monitor_deadline.delay(ticket.id)
 
+    ws_notify_dept_managers(
+        _ticket_department(ticket),
+        'ticket_status_changed',
+        {'ticket_id': ticket.id, 'status': ticket.status},
+    )
+
     return Response(
         {
             'id': ticket.id,
@@ -344,6 +350,12 @@ def decline_ticket(request, id):
             link='/manager_tasks.html',
         )
 
+    ws_notify_dept_managers(
+        department,
+        'ticket_status_changed',
+        {'ticket_id': ticket.id, 'status': ticket.status},
+    )
+
     return Response(
         {
             'id': ticket.id,
@@ -418,18 +430,32 @@ def complete_ticket(request, id):
         ticket.status = 'resolved'
         ticket.save(update_fields=['status'])
 
-        employee.is_busy = False
-        employee.save(update_fields=['is_busy'])
-
         active_assignment = TicketAssignment.objects.filter(ticket=ticket, is_resolved=False).first()
         if active_assignment:
             active_assignment.resolved_time = timezone.now()
             active_assignment.is_resolved = True
             active_assignment.save(update_fields=['resolved_time', 'is_resolved'])
 
+        # Снимаем is_busy только если других активных задач нет.
+        # Критическая задача могла быть назначена, пока сотрудник был занят —
+        # в таком случае он остаётся занятым.
+        still_has_tasks = Ticket.objects.filter(
+            assignee=employee,
+            status__in=['assigned', 'in_progress'],
+        ).exclude(id=ticket.id).exists()
+        if not still_has_tasks:
+            employee.is_busy = False
+            employee.save(update_fields=['is_busy'])
+
     transaction.on_commit(lambda: feedback_for_ml.delay(ticket.id))
 
     auto_assign_from_queue()
+
+    ws_notify_dept_managers(
+        _ticket_department(ticket),
+        'ticket_status_changed',
+        {'ticket_id': ticket.id, 'status': ticket.status},
+    )
 
     return Response(
         {
@@ -513,5 +539,19 @@ def reassign_ticket(request, id):
         title=f'Новая задача #{ticket.id}',
         message=ticket.description[:200] if ticket.description else 'Без описания',
         link='/employee_tasks.html',
+    )
+    if assignee.user_id:
+        try:
+            send_websocket_notification(
+                assignee.user_id,
+                'ticket_assigned',
+                {'ticket_id': ticket.id, 'message': f'Вам назначен тикет #{ticket.id}'},
+            )
+        except Exception:
+            pass
+    ws_notify_dept_managers(
+        _ticket_department(ticket),
+        'ticket_status_changed',
+        {'ticket_id': ticket.id, 'status': ticket.status},
     )
     return Response({'id': ticket.id, 'status': ticket.status, 'assignee_id': assignee.id}, status=status.HTTP_200_OK)

@@ -19,18 +19,57 @@ def _pick_least_loaded_employee(department):
     Из свободных сотрудников отдела выбирает того, у кого меньше всего
     активных назначений за всю историю (round-robin по нагрузке).
     Исключает руководителей (role.power >= 5) — они только распределяют.
+    Сначала пробует тех, кто на смене; если таких нет — берёт любого свободного.
     """
     now = timezone.now()
     on_shift_ids = WorkShift.objects.filter(
         is_active=True,
         start_time__lte=now,
     ).filter(Q(end_time__isnull=True) | Q(end_time__gt=now)).values('employee_id')
-    qs = Employee.objects.filter(
+
+    base_qs = Employee.objects.filter(
         department=department,
         is_busy=False,
         is_active=True,
-        id__in=on_shift_ids,
     ).exclude(role__power__gte=5)
+
+    # Предпочитаем тех, кто на смене
+    qs = base_qs.filter(id__in=on_shift_ids)
+    if not qs.exists():
+        # Фолбэк: берём любого свободного сотрудника отдела
+        qs = base_qs
+    qs = qs.annotate(
+        active_count=Count(
+            'assigned_tickets',
+            filter=Q(assigned_tickets__status__in=['assigned', 'in_progress']),
+        ),
+        total_count=Count('assignments_received'),
+    ).order_by('active_count', 'total_count', 'id')
+    return qs.first()
+
+
+def _pick_any_employee(department):
+    """
+    Для КРИТИЧЕСКИХ задач (priority >= 10): выбирает наименее загруженного
+    сотрудника отдела вне зависимости от флага is_busy.
+    Логика приоритетов и исключений та же, что у _pick_least_loaded_employee.
+    """
+    now = timezone.now()
+    on_shift_ids = WorkShift.objects.filter(
+        is_active=True,
+        start_time__lte=now,
+    ).filter(Q(end_time__isnull=True) | Q(end_time__gt=now)).values('employee_id')
+
+    base_qs = Employee.objects.filter(
+        department=department,
+        is_active=True,
+    ).exclude(role__power__gte=5)
+
+    # Предпочитаем тех, кто на смене
+    qs = base_qs.filter(id__in=on_shift_ids)
+    if not qs.exists():
+        qs = base_qs
+
     qs = qs.annotate(
         active_count=Count(
             'assigned_tickets',
@@ -54,11 +93,19 @@ def auto_assign_from_queue():
         .order_by('-priority', 'wait_start_time')
     )
 
+    CRITICAL_PRIORITY = 10
+
     assigned_count = 0
     for entry in queue_entries:
         if not entry.department:
             continue
-        employee = _pick_least_loaded_employee(entry.department)
+
+        is_critical = entry.priority >= CRITICAL_PRIORITY
+        employee = (
+            _pick_any_employee(entry.department)
+            if is_critical
+            else _pick_least_loaded_employee(entry.department)
+        )
         if not employee:
             # все заняты — следующая запись возможно из другого отдела
             continue
@@ -79,8 +126,10 @@ def auto_assign_from_queue():
         entry.is_activated = False
         entry.save(update_fields=['is_activated'])
 
-        employee.is_busy = True
-        employee.save(update_fields=['is_busy'])
+        # Для критических задач сотрудник уже мог быть занят — не перезаписываем лишний раз
+        if not employee.is_busy:
+            employee.is_busy = True
+            employee.save(update_fields=['is_busy'])
 
         notification(
             employee=employee,
@@ -101,6 +150,26 @@ def auto_assign_from_queue():
         assigned_count += 1
 
     return assigned_count
+
+def ws_notify_dept_managers(department, event_type, data):
+    """
+    Отправляет WebSocket-событие всем активным руководителям отдела.
+    Используется для мгновенного обновления дашборда менеджера.
+    """
+    if not department:
+        return
+    managers = Employee.objects.filter(
+        department=department,
+        is_active=True,
+        role__power__gte=5,
+    ).select_related('user')
+    for mgr in managers:
+        if mgr.user_id:
+            try:
+                send_websocket_notification(mgr.user_id, event_type, data)
+            except Exception:
+                pass
+
 
 def notify_manager(department, ticket):
     manager = Employee.objects.filter(department=department, is_active=True).first()

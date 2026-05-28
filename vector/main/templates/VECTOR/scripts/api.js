@@ -55,16 +55,6 @@ window.api = (function () {
             loginLink.href = dashboardHref(session.role);
             loginLink.textContent = 'Кабинет';
         }
-        const host = document.querySelector('header nav') || document.querySelector('header');
-        if (host && !document.getElementById('logout-button')) {
-            const btn = document.createElement('button');
-            btn.id = 'logout-button';
-            btn.type = 'button';
-            btn.textContent = 'Выйти';
-            btn.className = 'nav-item text-m md:text-xl font-light hover:text-[#FF9A3C]';
-            btn.addEventListener('click', () => window.api.logout());
-            host.appendChild(btn);
-        }
     }
 
     async function request(method, url, body, { auth = true, timeoutMs = 15000 } = {}) {

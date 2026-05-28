@@ -27,8 +27,9 @@
                 class="nav-item text-m md:text-xl font-light hover:text-[#FF9A3C]">Главная</a>
             <a href="manager_tasks.html" class="nav-item text-m md:text-xl font-light hover:text-[#FF9A3C]">Все
                 задачи</a>
-            <a href="manager_support.html"
-                class="nav-item text-m md:text-xl font-light hover:text-[#FF9A3C]">Техническая поддержка</a>
+            <a href="chat.html"
+                class="nav-item text-m md:text-xl font-light hover:text-[#FF9A3C]">ИИ Чат</a>
+            <button onclick="window.api && window.api.logout()" class="nav-item text-m md:text-xl font-light hover:text-red-400 transition-colors">Выйти</button>
         </nav>
     </header>
 
@@ -248,6 +249,7 @@
     </div>
 
     <script src="scripts/api.js"></script>
+    <script src="scripts/ws.js"></script>
     <script src="scripts/script_manager.js"></script>
 </body>
 

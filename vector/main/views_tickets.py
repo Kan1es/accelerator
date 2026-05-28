@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from .models import Ticket, Employee, Category, TicketAssignment, Notification, TaskQueue, WorkShift
+from .utils import send_websocket_notification
 
 
 def _is_manager(employee: Employee) -> bool:
@@ -84,6 +85,13 @@ def create_ticket(request):
             return Response({'error': 'Категория не найдена'},
                             status=status.HTTP_400_BAD_REQUEST)
 
+    try:
+        priority = int(request.data.get('priority', 5))
+    except (TypeError, ValueError):
+        priority = 5
+
+    is_critical = priority >= 10
+
     assignee = None
     assignee_id = request.data.get('assignee_id')
     if assignee_id:
@@ -94,13 +102,9 @@ def create_ticket(request):
                             status=status.HTTP_400_BAD_REQUEST)
         if not _employee_on_shift(assignee):
             return Response({'error': 'Исполнитель не на смене'}, status=status.HTTP_400_BAD_REQUEST)
-        if assignee.is_busy:
+        # Критические задачи (priority >= 10) назначаются вне зависимости от занятости
+        if assignee.is_busy and not is_critical:
             return Response({'error': 'Исполнитель уже занят'}, status=status.HTTP_400_BAD_REQUEST)
-
-    try:
-        priority = int(request.data.get('priority', 5))
-    except (TypeError, ValueError):
-        priority = 5
 
     deadline = _parse_deadline(request.data.get('deadline'))
 
@@ -122,14 +126,24 @@ def create_ticket(request):
                 assigned_time=timezone.now(),
                 is_resolved=False,
             )
-            assignee.is_busy = True
-            assignee.save(update_fields=['is_busy'])
+            if not assignee.is_busy:
+                assignee.is_busy = True
+                assignee.save(update_fields=['is_busy'])
             Notification.objects.create(
                 recipient=assignee,
                 title=f'Новая задача #{ticket.id}',
                 message=ticket.description[:200] if ticket.description else 'Без описания',
                 link='/employee_tasks.html',
             )
+            if assignee.user_id:
+                try:
+                    send_websocket_notification(
+                        assignee.user_id,
+                        'ticket_assigned',
+                        {'ticket_id': ticket.id, 'message': f'Вам назначен тикет #{ticket.id}'},
+                    )
+                except Exception:
+                    pass
 
     return Response({
         'id': ticket.id,

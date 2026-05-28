@@ -176,6 +176,25 @@ async function _loadCategories() {
     return _categoriesCache;
 }
 
+const _SEND_ICON_HTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>`;
+const _SPINNER_HTML   = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF7A00" stroke-width="2.5" style="animation:spin 0.8s linear infinite;display:block;"><path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"/></svg>`;
+
+function _setChatLoading(on) {
+    const btn   = document.getElementById('send-btn');
+    const input = document.getElementById('user-input');
+
+    if (btn) {
+        btn.disabled  = on;
+        btn.innerHTML = on ? _SPINNER_HTML : _SEND_ICON_HTML;
+        btn.style.color = on ? '#FF7A00' : '';
+    }
+    if (input) {
+        input.disabled     = on;
+        input.placeholder  = on ? 'Анализирую обращение…' : 'Спросите о чем-нибудь...';
+        input.style.opacity = on ? '0.4' : '';
+    }
+}
+
 window.sendMessage = async function() {
     const input = document.getElementById('user-input');
     if (!input) return;
@@ -191,6 +210,7 @@ window.sendMessage = async function() {
         return;
     }
 
+    _setChatLoading(true);
     addBotMessage('Анализирую обращение…');
 
     try {
@@ -254,6 +274,8 @@ window.sendMessage = async function() {
         } else {
             addBotMessage(`Ошибка при отправке: ${err.message || 'неизвестно'}`);
         }
+    } finally {
+        _setChatLoading(false);
     }
 }
 

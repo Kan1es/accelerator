@@ -24,7 +24,8 @@
             <a href="employee_tasks.html" class="nav-item text-m md:text-xl font-light text-[#CC6200]">Задачи</a>
             <a href="employee_dashboard.html"
                 class="nav-item text-m md:text-xl font-light hover:text-[#FF9A3C]">Главная</a>
-            <a href="employee_support.html" class="nav-item text-m md:text-xl font-light hover:text-[#FF9A3C]">Поддержка</a>
+            <a href="chat.html" class="nav-item text-m md:text-xl font-light hover:text-[#FF9A3C]">ИИ Чат</a>
+            <button onclick="window.api && window.api.logout()" class="nav-item text-m md:text-xl font-light hover:text-red-400 transition-colors">Выйти</button>
         </nav>
     </header>
 
@@ -58,37 +59,49 @@
                 </div>
             </div>
 
-            <div x-data="{ open: true }" :class="open ? 'flex-1' : 'flex-none'"
-                class="card flex flex-col overflow-hidden transition-all duration-500 ease-in-out">
-                <div @click="open = !open"
+            <!-- Sidebar chat — БЕЗ Alpine, чистый JS -->
+            <div id="sc-panel" class="card flex flex-col overflow-hidden transition-all duration-300"
+                style="flex:1 1 0%;min-height:0">
+
+                <div id="sc-toggle" onclick="window.scToggle()"
                     class="p-3 flex justify-between items-center border-b border-white/5 cursor-pointer shrink-0">
                     <div class="flex items-center gap-2">
                         <img src="images/ВЕКТОР.svg" class="w-8">
                         <div>
-                            <p class="text-sm font-[600]">ВЕКТОР</p>
-                            <span class="online flex items-center gap-1 text-[12px]">
-                                <span class="w-1.5 h-1.5 bg-[#00FF66] rounded-full"></span> В сети
+                            <p class="text-sm font-semibold">ВЕКТОР</p>
+                            <span class="flex items-center gap-1 text-xs">
+                                <span class="w-1.5 h-1.5 bg-[#00FF66] rounded-full"></span>
+                                <span class="text-[#6B6B6B]">В сети</span>
                             </span>
                         </div>
                     </div>
-                    <button class="text-[#6B6B6B] transition-transform duration-500" :class="!open && 'rotate-180'">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="3">
-                            <path d="M6 9l6 6 6-6" />
+                    <span id="sc-chevron" style="color:#6B6B6B;transition:transform .3s">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <path d="M6 9l6 6 6-6"/>
                         </svg>
-                    </button>
+                    </span>
                 </div>
-                <div x-show="open" x-collapse.duration.500ms class="flex flex-col flex-1 overflow-hidden">
-                    <div class="p-3 flex flex-col gap-2 overflow-y-auto custom-scrollbar">
-                        <button onclick="setChatQuery('Покажи мои активные задачи')" class="chat-pill text-sm">Мои
-                            активные задачи</button>
+
+                <div id="sc-body" style="flex:1 1 0%;min-height:0;display:flex;flex-direction:column;overflow:hidden">
+
+                    <div id="sidebar-chat-box" class="custom-scrollbar"
+                        style="flex:1 1 0%;min-height:100px;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px">
                     </div>
-                    <div class="mt-auto p-3 border-t border-white/5 bg-[#111111]">
-                        <div class="flex items-center gap-2 bg-black/40 p-2 px-3 rounded-xl border border-white/5">
-                            <input id="chat-input" class="bg-transparent outline-none text-sm flex-1" type="text"
-                                placeholder="Спросить...">
-                            <button class="text-[#FF7A00]">вћ¤</button>
+
+
+
+                    <div style="padding:10px 12px 12px;border-top:1px solid rgba(255,255,255,.05);background:#111111;flex-shrink:0">
+                        <div style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.4);padding:7px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07)">
+                            <input id="sidebar-chat-input" type="text" placeholder="Задайте вопрос..."
+                                onkeydown="if(event.key==='Enter')window.sidebarSendMessage()"
+                                style="background:transparent;outline:none;font-size:13px;flex:1;color:#fff;font-family:inherit">
+                            <button id="sidebar-send-btn" onclick="window.sidebarSendMessage()" style="color:#FF7A00;cursor:pointer;flex-shrink:0;background:none;border:none;padding:0;display:flex;align-items:center">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                                </svg>
+                            </button>
                         </div>
+                        <p style="font-size:10px;color:#333;text-align:center;margin-top:4px">Будьте внимательны, вы ведёте диалог с ИИ</p>
                     </div>
                 </div>
             </div>
@@ -143,7 +156,7 @@
                 <h1 class="text-2xl md:text-4xl font-[500] mb-6">Мои задачи</h1>
 
                 <div class="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                    <div class="flex gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar whitespace-nowrap w-full md:w-auto flex-wrap items-center">
+                    <div class="flex gap-2 overflow-x-auto no-scrollbar items-center flex-nowrap">
                         <button @click="filter = 'all'" :class="filter === 'all' ? 'active' : ''"
                             class="filter-btn shrink-0">Все</button>
                         <button @click="filter = 'progress'" :class="filter === 'progress' ? 'active' : ''"
@@ -174,14 +187,15 @@
 
                         <div class="flex flex-col gap-2">
                             <h4 class="text-xl font-bold text-white tracking-tight">
-                                Задача в„–<span x-text="task.id"></span> – <span x-text="task.title"></span>
+                                Задача №<span x-text="task.id"></span> – <span x-text="task.title"></span>
                             </h4>
 
                             <div class="space-y-1">
                                 <p class="text-sm text-[#6B6B6B] font-medium">
-                                    <span x-text="task.dept"></span> • Заявил:
+                                    <span x-text="task.dept"></span>
+                                    &nbsp;|&nbsp; Заявил:
                                     <span class="text-white" x-text="task.initiator"></span>
-                                    • Назначил:
+                                    &nbsp;|&nbsp; Назначил:
                                     <span class="text-white" x-text="task.assigner"></span>
                                 </p>
 
@@ -272,6 +286,7 @@
     </div>
 
     <script src="scripts/api.js"></script>
+    <script src="scripts/ws.js"></script>
     <script src="scripts/script_employee.js"></script>
 </body>
 

@@ -24,8 +24,9 @@
             <a href="employee_dashboard.html" class="nav-item text-m md:text-xl font-light text-[#CC6200]">Главная</a>
             <a href="employee_tasks.html"
                 class="nav-item text-m md:text-xl opacity-100 font-light hover:text-[#FF9A3C] active:text-[#CC6200]">Задачи</a>
-            <a href="employee_support.html"
-                class="nav-item text-m md:text-xl opacity-100 font-light hover:text-[#FF9A3C] active:text-[#CC6200]">Поддержка</a>
+            <a href="chat.html"
+                class="nav-item text-m md:text-xl opacity-100 font-light hover:text-[#FF9A3C] active:text-[#CC6200]">ИИ Чат</a>
+            <button onclick="window.api && window.api.logout()" class="nav-item text-m md:text-xl font-light hover:text-red-400 transition-colors">Выйти</button>
         </nav>
     </header>
 
@@ -41,43 +42,45 @@
                 </div>
             </div>
 
-            <div x-data="{ open: true }" :class="open ? 'lg:flex-[6]' : 'flex-none'"
-                class="card flex flex-col overflow-hidden transition-all duration-500 bg-[#151515]">
+            <!-- Sidebar chat — plain JS, no Alpine -->
+            <div id="sc-panel" class="card flex flex-col overflow-hidden lg:flex-[6]" style="min-height:0">
 
-                <div @click="open = !open"
+                <div id="sc-toggle" onclick="window.scToggle()"
                     class="p-3 flex justify-between items-center border-b border-[#2A2A2A] bg-[#151515] shrink-0 cursor-pointer">
                     <div class="flex items-center gap-2">
-                        <img src="images/ВЕКТОР.svg" class="w-6">
+                        <img src="images/ВЕКТОР.svg" class="w-6 shrink-0">
                         <div>
-                            <p class="textmd:h-full-xs uppercase font-[600]">ВЕКТОР</p>
-                            <span class="online flex items-center gap-1 text-[10px]">
-                                <span class="w-1.5 h-1.5 bg-[#22C55E] rounded-full"></span> В сети
+                            <p class="text-xs uppercase font-[600]">ВЕКТОР</p>
+                            <span class="flex items-center gap-1 text-[10px] text-[#22C55E]">
+                                <span class="w-1.5 h-1.5 bg-[#22C55E] rounded-full shrink-0"></span>
+                                В сети
                             </span>
                         </div>
                     </div>
-                    <button class="text-[#6B6B6B] transition-transform duration-500" :class="!open && 'rotate-180'">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="3">
-                            <path d="M6 9l6 6 6-6" />
+                    <span id="sc-chevron" style="color:#6B6B6B;transition:transform .3s">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                            <path d="M6 9l6 6 6-6"/>
                         </svg>
-                    </button>
+                    </span>
                 </div>
 
-                <div x-show="open" x-collapse.duration.500ms class="flex flex-col flex-1 overflow-hidden">
-                    <div class="p-3 flex flex-col gap-2">
-                        <button @click="setChatQuery('Соедини меня с управляющим')" class="chat-pill text-sm">Соедини
-                            меня с управляющим</button>
-                        <button @click="setChatQuery('Покажи мои активные задачи')"
-                            class="chat-pill text-sm">Покажи мои активные задачи</button>
+                <div id="sc-body" style="flex:1 1 0%;min-height:0;display:flex;flex-direction:column;overflow:hidden">
+                    <div id="sidebar-chat-box" class="custom-scrollbar"
+                        style="flex:1 1 0%;min-height:80px;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px">
                     </div>
-                    <div class="mt-auto p-3 border-t border-[#2A2A2A] bg-[#111111]">
-                        <div class="flex items-center gap-2 bg-black/40 p-2 px-3 rounded-xl border border-white/5">
-                            <input id="chat-input" class="bg-transparent outline-none text-sm flex-1 text-white"
-                                type="text" placeholder="Задайте вопрос...">
-                            <button class="text-[#FF7A00]">➤</button>
+
+                    <div style="padding:10px 12px 12px;border-top:1px solid rgba(255,255,255,.05);background:#111111;flex-shrink:0">
+                        <div style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.4);padding:7px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.07)">
+                            <input id="sidebar-chat-input" type="text" placeholder="Задайте вопрос..."
+                                onkeydown="if(event.key==='Enter')window.sidebarSendMessage()"
+                                style="background:transparent;outline:none;font-size:13px;flex:1;color:#fff;font-family:inherit">
+                            <button id="sidebar-send-btn" onclick="window.sidebarSendMessage()" style="color:#FF7A00;cursor:pointer;flex-shrink:0;background:none;border:none;padding:0;display:flex;align-items:center">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                                </svg>
+                            </button>
                         </div>
-                        <p class="text-[9px] text-center text-[#6B6B6B] mt-2">Будьте внимательны, вы ведёте диалог с
-                                ИИ</p>
+                        <p style="font-size:10px;color:#333;text-align:center;margin-top:4px">Будьте внимательны, вы ведёте диалог с ИИ</p>
                     </div>
                 </div>
             </div>
@@ -269,6 +272,7 @@
             </div>
         </div>
         <script src="scripts/api.js"></script>
+        <script src="scripts/ws.js"></script>
         <script src="scripts/script_employee.js"></script>
 </body>
 

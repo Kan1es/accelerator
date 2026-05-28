@@ -295,28 +295,42 @@
         if (tasksAvatarEl) tasksAvatarEl.textContent = initials;
     })();
 
-    // Подгрузка задач для employee_dashboard.html
-    (async () => {
+    // Подгрузка задач для employee_dashboard.html — с автообновлением каждые 30 с
+    let _dashFirstLoad = true;
+    let _dashPrevIds   = new Set();
+
+    async function _empDashLoad() {
         if (!window.api || !window.api.getToken()) return;
         const taskList = document.getElementById('emp-task-list');
         const attention = document.getElementById('emp-attention-list');
-        const countEl = document.getElementById('emp-active-count');
-        const wordEl = document.getElementById('emp-active-word');
-        const barEl = document.getElementById('emp-progress-bar');
-        const labelEl = document.getElementById('emp-progress-label');
-        const totalEl = document.getElementById('emp-progress-total');
+        const countEl   = document.getElementById('emp-active-count');
+        const wordEl    = document.getElementById('emp-active-word');
+        const barEl     = document.getElementById('emp-progress-bar');
+        const labelEl   = document.getElementById('emp-progress-label');
+        const totalEl   = document.getElementById('emp-progress-total');
         if (!taskList && !attention && !countEl && !barEl) return;
 
         try {
             const tickets = await window.api.get('/api/tickets/my/');
-            const items = tickets || [];
+            const items   = tickets || [];
+
+            // Оповещение о новых задачах при фоновом опросе
+            if (!_dashFirstLoad) {
+                const incoming = items.filter(t => !_dashPrevIds.has(t.id));
+                if (incoming.length > 0) {
+                    _empToast(incoming.length === 1
+                        ? 'Новая задача назначена!'
+                        : `Назначено новых задач: ${incoming.length}`);
+                }
+            }
+            _dashPrevIds = new Set(items.map(t => t.id));
 
             // Счётчик активных + прогресс-бар «выполнено / всего».
             const active = items.filter(t => t.status === 'open' || t.status === 'assigned' || t.status === 'in_progress');
-            const done = items.filter(t => t.status === 'resolved' || t.status === 'closed');
-            const total = items.length;
+            const done   = items.filter(t => t.status === 'resolved' || t.status === 'closed');
+            const total  = items.length;
             if (countEl) countEl.textContent = String(active.length);
-            if (wordEl) wordEl.textContent = _pluralTasks(active.length);
+            if (wordEl)  wordEl.textContent  = _pluralTasks(active.length);
             if (totalEl) totalEl.textContent = String(total);
             if (barEl) {
                 const pct = total > 0 ? Math.round(done.length / total * 100) : 0;
@@ -329,37 +343,35 @@
             }
 
             if (taskList) {
-                if (items.length === 0) {
-                    taskList.innerHTML = '<p class="text-xs text-[#6B6B6B] text-center p-4">Нет задач</p>';
-                } else {
-                    taskList.innerHTML = items.map(t => `
+                const newHtml = items.length === 0
+                    ? '<p class="text-xs text-[#6B6B6B] text-center p-4">Нет задач</p>'
+                    : items.map(t => `
                         <div class="task-item">
                             <span class="dot">•</span>
                             <div>
                                 <p class="text-sm">${_e(t.category_name || 'Без категории')}</p>
-                                <span class="muted">в„–${t.id} • ${_e(_emp_statusLabel(t.status))}</span>
+                                <span class="muted">№${t.id} • ${_e(_emp_statusLabel(t.status))}</span>
                             </div>
                         </div>
                     `).join('');
-                }
+                if (taskList.innerHTML.trim() !== newHtml.trim()) taskList.innerHTML = newHtml;
             }
 
             if (attention) {
-                const now = Date.now();
+                const now    = Date.now();
                 const urgent = items.filter(t =>
                     t.status !== 'resolved' &&
                     t.status !== 'closed' &&
                     (t.deadline ? new Date(t.deadline).getTime() - now < 24 * 3600 * 1000 : t.priority >= 7)
                 );
-                if (urgent.length === 0) {
-                    attention.innerHTML = '<p class="text-xs text-[#6B6B6B] text-center py-6">Срочных задач нет</p>';
-                } else {
-                    attention.innerHTML = urgent.map(t => `
+                const newHtml = urgent.length === 0
+                    ? '<p class="text-xs text-[#6B6B6B] text-center py-6">Срочных задач нет</p>'
+                    : urgent.map(t => `
                         <div class="bg-[#111111] border border-white/5 p-4 md:p-8 rounded-[5px] flex flex-col md:flex-row items-center justify-between gap-4 shrink-0">
                             <div class="flex flex-col md:flex-row items-center text-center md:text-left gap-4 md:gap-8">
                                 <div class="bg-[#FF7A00] w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shrink-0"></div>
                                 <div>
-                                    <h4 class="font-[500] text-xl md:text-2xl uppercase tracking-tighter">Задача в„–${t.id}</h4>
+                                    <h4 class="font-[500] text-xl md:text-2xl uppercase tracking-tighter">Задача №${t.id}</h4>
                                     <p class="text-xs md:text-sm muted">${_e(t.category_name || 'Без категории')} • приоритет ${t.priority}</p>
                                 </div>
                             </div>
@@ -367,14 +379,22 @@
                                 href="employee_tasks.html">Открыть</a>
                         </div>
                     `).join('');
-                }
+                if (attention.innerHTML.trim() !== newHtml.trim()) attention.innerHTML = newHtml;
             }
         } catch (err) {
-            const msg = `<p class="text-xs text-red-400 text-center p-4">Ошибка: ${_e(err.message || 'не удалось загрузить')}</p>`;
-            if (taskList) taskList.innerHTML = msg;
-            if (attention) attention.innerHTML = msg;
+            if (_dashFirstLoad) {
+                const msg = `<p class="text-xs text-red-400 text-center p-4">Ошибка: ${_e(err.message || 'не удалось загрузить')}</p>`;
+                if (taskList) taskList.innerHTML = msg;
+                if (attention) attention.innerHTML = msg;
+            }
         }
-    })();
+        _dashFirstLoad = false;
+    }
+    _empDashLoad();
+    setInterval(_empDashLoad, 30000);
+    // Мгновенные обновления через WebSocket
+    window.addEventListener('ws:ticket_assigned',       _empDashLoad);
+    window.addEventListener('ws:ticket_status_changed', _empDashLoad);
 
     function _e(s) {
         return String(s == null ? '' : s)
@@ -521,15 +541,15 @@ function _ticketToTask(t) {
         id: t.id,
         title: t.category_name || 'Без категории',
         dept: t.assignee_name
-            ? `?сполнитель: ${t.assignee_name}`
+            ? `Исполнитель: ${t.assignee_name}`
             : (inQueue ? '🕒 В очереди — ждём свободного исполнителя' : 'Не назначен'),
         // Кто заявил о проблеме (creator) и кто реально распределил исполнителя
         // (assigner из TicketAssignment). Если ещё никто не назначен — диспетчер
-        // ещё не определён (тикет в очереди ??-агента).
+        // ещё не определён (тикет в очереди ИИ-агента).
         initiator: t.creator_name || '—',
         assigner: inQueue
-            ? '🤖 ??-агент «Вектор» (ожидание)'
-            : (t.assigner_name || '🤖 ??-агент «Вектор»'),
+            ? '🤖 ИИ-агент «Вектор» (ожидание)'
+            : (t.assigner_name || '🤖 ИИ-агент «Вектор»'),
         comment: t.description,
         status: inQueue ? 'queued' : (TICKET_STATUS_TO_UI[t.status] || 'assigned'),
         rawStatus: t.status,
@@ -555,21 +575,24 @@ function taskManager() {
         tasks: [],
         meetings: [],
         currentEmployeeId: null,
+        _pollInterval: null,
 
         async init() {
             if (!window.api || !window.api.requireAuth()) return;
             const session = window.api.getSession();
             this.currentEmployeeId = session.employeeId ? Number(session.employeeId) : null;
             await this.reload();
+            // Фоновый опрос каждые 30 секунд — резервный механизм
+            this._pollInterval = setInterval(() => this._backgroundPoll(), 30000);
+            // Мгновенные обновления через WebSocket (если ws.js подключён)
+            window.addEventListener('ws:ticket_assigned',       () => this._backgroundPoll());
+            window.addEventListener('ws:ticket_status_changed', () => this._backgroundPoll());
         },
 
         async reload() {
             this.loading = true;
             this.loadError = null;
             try {
-                // «Мои задачи» = тикеты, где текущий пользователь — assignee.
-                // /api/tickets/my/ отдаёт именно их (включая resolved/closed для
-                // расчёта прогресс-бара слева).
                 const myList = await window.api.get('/api/tickets/my/');
                 const items = myList || [];
                 this._updateProfileProgress(items);
@@ -580,6 +603,24 @@ function taskManager() {
             } finally {
                 this.loading = false;
             }
+        },
+
+        // Тихий фоновый опрос — не меняет loading, показывает тост при новых задачах
+        async _backgroundPoll() {
+            if (!window.api || !window.api.getToken()) return;
+            try {
+                const myList = await window.api.get('/api/tickets/my/');
+                const items  = myList || [];
+                const oldIds = new Set(this.tasks.map(t => t.id));
+                const incoming = items.filter(t => !oldIds.has(t.id));
+                this._updateProfileProgress(items);
+                this.tasks = items.map(_ticketToTask);
+                if (incoming.length > 0) {
+                    _empToast(incoming.length === 1
+                        ? 'Новая задача назначена!'
+                        : `Назначено новых задач: ${incoming.length}`);
+                }
+            } catch (_) { /* фоновый опрос — ошибку не показываем */ }
         },
 
         _updateProfileProgress(myTickets) {
@@ -787,3 +828,240 @@ window.confirmEmployeeDecline = async function(component) {
         component.declineNotMine = false;
     }
 };
+
+// ─── Toast-уведомление о новых задачах ──────────────────────────────────────
+function _empToast(msg) {
+    var el = document.getElementById('_emp-toast-notif');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = '_emp-toast-notif';
+        el.style.cssText = [
+            'position:fixed;top:24px;left:50%;z-index:9999',
+            'transform:translateX(-50%) translateY(-16px)',
+            'opacity:0;pointer-events:none',
+            'background:#151515;border:1px solid rgba(255,122,0,.5)',
+            'color:#fff;padding:10px 22px;border-radius:8px',
+            'font-size:14px;font-family:inherit',
+            'box-shadow:0 4px 24px rgba(0,0,0,.5)',
+            'transition:opacity .25s,transform .25s;white-space:nowrap'
+        ].join(';');
+        document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.style.opacity = '1';
+    el.style.transform = 'translateX(-50%) translateY(0)';
+    clearTimeout(el._t);
+    el._t = setTimeout(function() {
+        el.style.opacity = '0';
+        el.style.transform = 'translateX(-50%) translateY(-16px)';
+    }, 3500);
+}
+
+// ═══════════════════════════════════════════════════════════
+// SIDEBAR CHAT — полноценный ИИ-чат в боковой панели
+// ═══════════════════════════════════════════════════════════
+
+function _scEsc(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+let _scCatsCache = null;
+async function _scLoadCats() {
+    if (_scCatsCache) return _scCatsCache;
+    try { _scCatsCache = await window.api.get('/api/categories/'); }
+    catch (_) { _scCatsCache = []; }
+    return _scCatsCache;
+}
+
+function _scBotMsg(html) {
+    const box = document.getElementById('sidebar-chat-box');
+    if (!box) return;
+    const el = document.createElement('div');
+    el.className = 'flex gap-2 items-start';
+    el.innerHTML = `
+        <img src="images/ВЕКТОР.svg" style="width:20px;height:20px;opacity:.6;flex-shrink:0;margin-top:2px">
+        <div style="background:#1A1A1A;border:1px solid rgba(255,255,255,.06);padding:8px 12px;border-radius:12px;border-top-left-radius:2px;font-size:12px;line-height:1.5;color:#fff">${html}</div>`;
+    box.appendChild(el);
+    box.scrollTop = box.scrollHeight;
+}
+
+function _scUserMsg(text) {
+    const box = document.getElementById('sidebar-chat-box');
+    if (!box) return;
+    const el = document.createElement('div');
+    el.style.cssText = 'display:flex;justify-content:flex-end';
+    const inner = document.createElement('div');
+    inner.style.cssText = 'background:rgba(255,122,0,.12);border:1px solid rgba(255,122,0,.3);padding:8px 12px;border-radius:12px;border-top-right-radius:2px;font-size:12px;line-height:1.5;color:#fff;max-width:90%';
+    inner.textContent = text;
+    el.appendChild(inner);
+    box.appendChild(el);
+    box.scrollTop = box.scrollHeight;
+}
+
+let _scPendingForm = null;
+let _scPendingText = '';
+
+window.sidebarSendMessage = function(preset) {
+    const input = document.getElementById('sidebar-chat-input');
+    const text  = preset || (input ? input.value.trim() : '');
+    if (!text) return;
+    if (input && !preset) input.value = '';
+
+    // Показываем сообщение пользователя (не для внутренних кодов)
+    if (!preset || !preset.startsWith('__')) _scUserMsg(text);
+
+    if (!window.api || !window.api.getToken()) {
+        _scBotMsg('Необходимо войти в систему.');
+        return;
+    }
+
+    // Обработка быстрых кнопок по коду
+    if (preset === '__show_tasks__') {
+        _scUserMsg('Покажи мои активные задачи');
+        _scBotMsg('Ваши задачи отображаются в центральном списке. Используйте фильтр «В работе» или «Назначено» чтобы увидеть только активные.');
+        return;
+    }
+    if (preset === '__connect_manager__') {
+        _scUserMsg('Соедини меня с управляющим');
+        _scBotMsg('Уведомление менеджеру отправлено. Он свяжется с вами в ближайшее время.');
+        return;
+    }
+
+    // Любой текст из поля → создание заявки
+    _scShowForm(text);
+};
+
+function _scShowForm(text) {
+    if (_scPendingForm) { _scPendingForm.remove(); _scPendingForm = null; }
+    _scPendingText = text;
+    const box = document.getElementById('sidebar-chat-box');
+    if (!box) return;
+
+    const wrap = document.createElement('div');
+    wrap.id = 'sc-pending-form';
+    wrap.style.cssText = 'display:flex;gap:8px;align-items:flex-start';
+    wrap.innerHTML = `
+        <img src="images/ВЕКТОР.svg" style="width:20px;height:20px;opacity:.6;flex-shrink:0;margin-top:2px">
+        <div style="background:#1A1A1A;border:1px solid rgba(255,255,255,.06);padding:10px 12px;border-radius:12px;border-top-left-radius:2px;font-size:12px;color:#fff;flex:1;min-width:0">
+            <p style="color:#B3B3B3;margin-bottom:6px">Создать заявку по описанию?</p>
+            <p style="font-size:10px;color:#6B6B6B;margin-bottom:8px;word-break:break-word">${_scEsc(text.slice(0, 100))}${text.length > 100 ? '…' : ''}</p>
+            <select id="sc-priority" style="width:100%;background:#0D0D0D;border:1px solid rgba(255,255,255,.1);color:#fff;border-radius:8px;padding:5px 8px;font-size:11px;margin-bottom:8px;outline:none">
+                <option value="3">Низкая критичность</option>
+                <option value="5" selected>Обычная</option>
+                <option value="7">Высокая</option>
+                <option value="10">Критическая</option>
+            </select>
+            <div id="sc-form-err" style="display:none;color:#f87171;font-size:10px;margin-bottom:6px"></div>
+            <div style="display:flex;gap:8px">
+                <button id="sc-submit-btn"
+                    style="flex:1;background:#FF7A00;color:#fff;border:none;border-radius:8px;padding:6px;font-size:11px;font-weight:600;cursor:pointer">
+                    Отправить
+                </button>
+                <button id="sc-cancel-btn"
+                    style="flex:1;background:#1F1F1F;color:#fff;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:6px;font-size:11px;cursor:pointer">
+                    Отмена
+                </button>
+            </div>
+        </div>`;
+
+    box.appendChild(wrap);
+    _scPendingForm = wrap;
+    box.scrollTop = box.scrollHeight;
+
+    // Привязываем обработчики через JS — надёжнее inline-onclick внутри Alpine
+    wrap.querySelector('#sc-submit-btn').addEventListener('click', window.sidebarCreateTicket);
+    wrap.querySelector('#sc-cancel-btn').addEventListener('click', window.sidebarCancelTicket);
+}
+
+window.sidebarCancelTicket = function() {
+    if (_scPendingForm) { _scPendingForm.remove(); _scPendingForm = null; }
+    _scPendingText = '';
+    _scBotMsg('Хорошо, заявку не создаю. Напишите новое обращение когда будет нужно.');
+};
+
+window.sidebarCreateTicket = async function() {
+    const priorityEl = document.getElementById('sc-priority');
+    const errEl      = document.getElementById('sc-form-err');
+    const submitBtn  = document.getElementById('sc-submit-btn');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '…'; }
+    if (errEl) errEl.style.display = 'none';
+
+    try {
+        const [data, cats] = await Promise.all([
+            window.api.post('/api/agent/classify/', {
+                text:     _scPendingText,
+                priority: parseInt(priorityEl ? priorityEl.value : '5', 10),
+            }),
+            _scLoadCats(),
+        ]);
+
+        if (_scPendingForm) { _scPendingForm.remove(); _scPendingForm = null; }
+        _scPendingText = '';
+
+        const pct     = Math.round((data.confidence || 0) * 100);
+        const rcId    = 'sc-rc-' + data.ticket_id;
+        const catOpts = cats.map(function(c) { return '<option value="' + c.id + '">' + _scEsc(c.name) + '</option>'; }).join('');
+        const assignee = data.assignee_name
+            ? 'Исполнитель: <span style="color:#FF7A00">' + _scEsc(data.assignee_name) + '</span>'
+            : '🕒 В очереди — свободный сотрудник подхватит задачу';
+
+        const rcBlock = cats.length > 0
+            ? '<div id="' + rcId + '-block" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.06)">' +
+              '<p style="font-size:10px;color:#6B6B6B;margin-bottom:4px">Категория неверная? Исправьте:</p>' +
+              '<div style="display:flex;gap:4px">' +
+              '<select id="' + rcId + '-select" style="flex:1;background:#0D0D0D;border:1px solid rgba(255,255,255,.1);color:#fff;border-radius:6px;padding:3px 6px;font-size:10px;outline:none">' +
+              '<option value="">— выберите —</option>' + catOpts + '</select>' +
+              '<button data-ticket-id="' + data.ticket_id + '" data-rc-id="' + rcId + '" class="sc-reclass-btn" ' +
+              'style="background:#FF7A00;color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:10px;cursor:pointer">✓</button>' +
+              '</div></div>'
+            : '';
+
+        _scBotMsg('<span style="color:#22C55E;font-weight:600">Заявка №' + data.ticket_id + ' создана!</span><br>' +
+            'Категория: <span style="color:#FF7A00" id="' + rcId + '-cat">' + _scEsc(data.category) + '</span> (' + pct + '%)<br>' +
+            assignee + rcBlock);
+    } catch (err) {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Отправить'; }
+        if (errEl) { errEl.textContent = err.message || 'Не удалось создать заявку'; errEl.style.display = 'block'; }
+    }
+};
+
+// Делегирование клика для кнопок переназначения категории
+document.addEventListener('click', async function(e) {
+    const btn = e.target.closest('.sc-reclass-btn');
+    if (!btn) return;
+    const ticketId = btn.dataset.ticketId;
+    const rcId     = btn.dataset.rcId;
+    const select   = document.getElementById(rcId + '-select');
+    if (!select || !select.value) { if (select) select.style.borderColor = '#f87171'; return; }
+    btn.disabled = true; btn.textContent = '…';
+    try {
+        const data = await window.api.patch('/api/tickets/' + ticketId + '/reclassify/', { category_id: parseInt(select.value) });
+        const catEl  = document.getElementById(rcId + '-cat');
+        const block  = document.getElementById(rcId + '-block');
+        if (catEl) catEl.textContent = data.category;
+        if (block) block.innerHTML = '<p style="font-size:10px;color:#22C55E">Категория изменена: <strong>' + _scEsc(data.category) + '</strong></p>';
+    } catch (err) {
+        btn.disabled = false; btn.textContent = '✓';
+    }
+});
+
+// Переключение (свернуть / развернуть) боковую панель — вызывается из onclick в HTML
+window.scToggle = function() {
+    var b = document.getElementById('sc-body');
+    var c = document.getElementById('sc-chevron');
+    if (!b) return;
+    var hidden = b.style.display === 'none';
+    b.style.display = hidden ? 'flex' : 'none';
+    if (c) c.style.transform = hidden ? '' : 'rotate(180deg)';
+};
+
+// Приветственное сообщение — скрипт находится в конце <body>, DOM уже построен,
+// поэтому вызываем немедленно, без ожидания DOMContentLoaded / load.
+(function() {
+    var box = document.getElementById('sidebar-chat-box');
+    if (box && box.children.length === 0) {
+        _scBotMsg('Здравствуйте! Опишите проблему — я создам заявку, ИИ определит категорию и назначит исполнителя.');
+    }
+})();

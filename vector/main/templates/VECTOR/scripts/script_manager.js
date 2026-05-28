@@ -75,14 +75,14 @@ function _ticketCard(t) {
     return `
       <div class="bg-[#151515] border ${isDeclined || isOverdue ? 'border-red-500/50' : 'border-white/5'} rounded-[5px] p-4 flex flex-col gap-2">
         <div class="flex items-center justify-between">
-          <p class="font-semibold">Задача в„–${t.id}</p>
+          <p class="font-semibold">Задача №${t.id}</p>
           <span class="text-xs ${isDeclined || isOverdue ? 'text-red-400' : 'text-[#FF9A3C]'}">${_esc(TICKET_STATUS_LABELS[t.status] || t.status)}</span>
         </div>
         <p class="text-sm text-[#B3B3B3]">${_esc(t.description)}</p>
         ${declineBlock}
         <div class="text-xs text-[#6B6B6B] flex flex-wrap gap-3">
           <span>Категория: ${_esc(t.category_name || '—')}</span>
-          <span>?сполнитель: ${_esc(assignee)}</span>
+          <span>Исполнитель: ${_esc(assignee)}</span>
           <span>Приоритет: ${t.priority}</span>
           ${isOverdue ? '<span class="text-red-400">Дедлайн просрочен</span>' : ''}
         </div>
@@ -401,7 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     : active.map(t => `
                         <div class="task-card-sm flex justify-between items-center gap-4">
                             <div>
-                                <h3 class="font-semibold text-sm">Задача в„–${t.id}</h3>
+                                <h3 class="font-semibold text-sm">Задача №${t.id}</h3>
                                 <p class="text-[11px] text-[#6B6B6B]">${_esc(t.category_name || '—')}</p>
                             </div>
                             <span class="badge-working shrink-0"><span class="w-1.5 h-1.5 rounded-full bg-[#F59E0B] inline-block"></span>${t.status === 'in_progress' ? 'В работе' : 'Назначена'}</span>
@@ -416,7 +416,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="task-card-sm">
                             <div class="flex justify-between items-start gap-4">
                                 <div>
-                                    <h3 class="font-semibold text-sm">Задача в„–${t.id}</h3>
+                                    <h3 class="font-semibold text-sm">Задача №${t.id}</h3>
                                     <p class="text-[11px] text-[#6B6B6B]">${_esc(t.category_name || '—')}</p>
                                 </div>
                                 <div class="text-right shrink-0">
@@ -435,7 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="done-item">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2.5" class="shrink-0 mt-0.5"><path d="M20 6L9 17l-5-5"/></svg>
                             <div class="flex-1 min-w-0">
-                                <p class="text-sm font-medium text-[#22C55E]">Задача в„–${t.id}</p>
+                                <p class="text-sm font-medium text-[#22C55E]">Задача №${t.id}</p>
                                 <p class="text-[10px] text-[#6B6B6B] truncate">${_esc(t.category_name || '—')}</p>
                             </div>
                         </div>
@@ -612,13 +612,13 @@ function _ticketCard(t) {
     return `
       <div class="bg-[#151515] border border-white/5 rounded-[5px] p-4 flex flex-col gap-2">
         <div class="flex items-center justify-between">
-          <p class="font-semibold">Задача в„–${t.id}</p>
+          <p class="font-semibold">Задача №${t.id}</p>
           <span class="text-xs text-[#FF9A3C]">${_esc(TICKET_STATUS_LABELS[t.status] || t.status)}</span>
         </div>
         <p class="text-sm text-[#B3B3B3]">${_esc(t.description)}</p>
         <div class="text-xs text-[#6B6B6B] flex flex-wrap gap-3">
           <span>Категория: ${_esc(t.category_name || '—')}</span>
-          <span>?сполнитель: ${_esc(t.assignee_name || 'не назначен')}</span>
+          <span>Исполнитель: ${_esc(t.assignee_name || 'не назначен')}</span>
           <span>Приоритет: ${t.priority}</span>
         </div>
       </div>`;
@@ -672,57 +672,106 @@ async function loadTasksGrid() {
     }
 }
 
+// Плавная замена контента: показываем старое пока грузим новое, фейдим только при изменении
+function _smoothReplace(el, newHtml) {
+    if (!el) return;
+    if (el.innerHTML.trim() === newHtml.trim()) return; // ничего не изменилось — не трогаем DOM
+    el.style.transition = 'opacity 0.15s ease';
+    el.style.opacity = '0';
+    setTimeout(() => {
+        el.innerHTML = newHtml;
+        el.style.opacity = '1';
+    }, 150);
+}
+
+// Живые таймеры: обновляем каждую секунду только текст, без перерисовки
+function _tickActiveTimers() {
+    const now = Date.now();
+    document.querySelectorAll('[data-task-deadline]').forEach(el => {
+        const dl = parseInt(el.dataset.taskDeadline, 10);
+        const left = Math.max(0, dl - now);
+        const h = String(Math.floor(left / 3600000)).padStart(2, '0');
+        const m = String(Math.floor((left % 3600000) / 60000)).padStart(2, '0');
+        const s = String(Math.floor((left % 60000) / 1000)).padStart(2, '0');
+        el.textContent = `${h}:${m}:${s}`;
+        if (left === 0) {
+            el.className = el.className.replace('text-[#FF7A00]', 'text-[#EF4444]');
+        }
+    });
+}
+
 async function loadMgrActiveTasks() {
     const wrap = document.getElementById('mgr-active-tasks');
     if (!wrap || !window.api || !window.api.requireAuth()) return;
 
-    const header = '<h2 class="text-xl font-medium sticky top-0 bg-[#0D0D0D] pt-2 z-10">Задачи в работе</h2>';
-    wrap.innerHTML = header + '<p class="text-xs text-[#6B6B6B] py-4">Загрузка…</p>';
+    const HEADER = '<h2 class="text-xl font-medium sticky top-0 bg-[#0D0D0D] pt-2 z-10">Задачи в работе</h2>';
+
+    // Первый вызов — показываем заглушку
+    if (!wrap.querySelector('[data-task-id]')) {
+        wrap.innerHTML = HEADER + '<p class="text-xs text-[#6B6B6B] py-4">Загрузка…</p>';
+    }
 
     try {
         const list = await window.api.get('/api/mobile/tickets/');
-        const active = (list || []).filter(t => t.status === 'in_progress' || t.status === 'assigned');
+        const active = (list || []).filter(t => ['in_progress', 'assigned'].includes(t.status));
+
         if (active.length === 0) {
-            wrap.innerHTML = header + '<p class="text-xs text-[#6B6B6B] py-4">Активных задач нет</p>';
+            wrap.innerHTML = HEADER + '<p class="text-xs text-[#6B6B6B] py-4">Активных задач нет</p>';
             return;
         }
-        wrap.innerHTML = header + active.map(t => {
-            const left = t.deadline ? Math.max(0, new Date(t.deadline).getTime() - Date.now()) : 0;
-            const h = String(Math.floor(left / 3600000)).padStart(2,'0');
-            const m = String(Math.floor((left % 3600000) / 60000)).padStart(2,'0');
-            const s = String(Math.floor((left % 60000) / 1000)).padStart(2,'0');
+
+        // Сравниваем текущий набор id с новым — если одинаковый, не перерисовываем
+        const renderedIds = new Set(
+            Array.from(wrap.querySelectorAll('[data-task-id]')).map(el => el.dataset.taskId)
+        );
+        const freshIds = new Set(active.map(t => String(t.id)));
+        const same = renderedIds.size === freshIds.size && [...freshIds].every(id => renderedIds.has(id));
+        if (same) return; // таймеры продолжают тикать сами
+
+        // Набор задач изменился — перерисовываем
+        wrap.innerHTML = HEADER + active.map(t => {
+            const dlMs = t.deadline ? new Date(t.deadline).getTime() : 0;
+            const left = dlMs ? Math.max(0, dlMs - Date.now()) : 0;
+            const h = String(Math.floor(left / 3600000)).padStart(2, '0');
+            const m = String(Math.floor((left % 3600000) / 60000)).padStart(2, '0');
+            const s = String(Math.floor((left % 60000) / 1000)).padStart(2, '0');
+            const timerClass = left > 0 ? 'text-[#FF7A00]' : 'text-[#EF4444]';
+            const dlAttr = dlMs ? `data-task-deadline="${dlMs}"` : '';
             return `
-              <div class="task-card">
+              <div class="task-card" data-task-id="${t.id}">
                 <div class="flex justify-between items-start gap-4">
                     <div>
-                        <h3 class="font-semibold text-base tracking-tight">Задача в„–${t.id}</h3>
-                        <p class="text-xs text-[#6B6B6B] mt-0.5">${_esc(t.description || '').slice(0, 80)}</p>
+                        <h3 class="font-semibold text-base tracking-tight">Задача №${t.id}</h3>
+                        <p class="text-xs text-[#6B6B6B] mt-0.5">${_esc((t.description || '').slice(0, 80))}</p>
                         <p class="text-xs text-[#B3B3B3] mt-1">Выполняет: ${_esc(t.assignee_name || '—')}</p>
                     </div>
                     <div class="text-right shrink-0">
                         <p class="text-[10px] text-[#6B6B6B]">До конца срока выполнения:</p>
-                        <p class="text-lg font-semibold ${left > 0 ? 'text-[#FF7A00]' : 'text-[#EF4444]'} tracking-widest">${h}:${m}:${s}</p>
+                        <p class="text-lg font-semibold ${timerClass} tracking-widest" ${dlAttr}>${h}:${m}:${s}</p>
                     </div>
                 </div>
               </div>`;
         }).join('');
-    } catch (err) {
-        wrap.innerHTML = header + `<p class="text-xs text-red-400 py-4">Ошибка: ${_esc(err.message || '')}</p>`;
+    } catch (_) {
+        // При ошибке поллинга не затираем уже отрисованные задачи
     }
 }
 
 async function loadMgrEmployees() {
     const wrap = document.getElementById('mgr-employees-list');
     if (!wrap || !window.api || !window.api.requireAuth()) return;
-    wrap.innerHTML = '<p class="text-xs text-[#6B6B6B] text-center p-4">Загрузка…</p>';
+
+    // Показываем "Загрузка…" только при первом вызове (контента ещё нет)
+    const isFirst = !wrap.querySelector('.employee-row');
+    if (isFirst) wrap.innerHTML = '<p class="text-xs text-[#6B6B6B] text-center p-4">Загрузка…</p>';
 
     try {
         const list = await window.api.get('/api/mobile/employees/');
         if (!list || list.length === 0) {
-            wrap.innerHTML = '<p class="text-xs text-[#6B6B6B] text-center p-4">Нет сотрудников</p>';
+            _smoothReplace(wrap, '<p class="text-xs text-[#6B6B6B] text-center p-4">Нет сотрудников</p>');
             return;
         }
-        wrap.innerHTML = list.map(e => {
+        const newHtml = list.map(e => {
             const badge = e.is_busy
                 ? '<span class="badge-working"><span class="w-1.5 h-1.5 rounded-full bg-[#F59E0B] inline-block shrink-0"></span>В работе</span>'
                 : (e.is_on_shift
@@ -742,8 +791,11 @@ async function loadMgrEmployees() {
                 ${badge}
               </div>`;
         }).join('');
+        // Обновляем DOM только если данные изменились, плавно
+        _smoothReplace(wrap, newHtml);
     } catch (err) {
-        wrap.innerHTML = `<p class="text-xs text-red-400 text-center p-4">Ошибка: ${_esc(err.message || '')}</p>`;
+        if (isFirst) wrap.innerHTML = `<p class="text-xs text-red-400 text-center p-4">Ошибка: ${_esc(err.message || '')}</p>`;
+        // При ошибке на фоне — не затираем уже отрисованный список
     }
 }
 
@@ -807,14 +859,17 @@ async function loadMgrNotifications() {
     const wrap = document.getElementById('mgr-notif-list');
     if (!wrap || !window.api || !window.api.requireAuth()) return;
 
-    wrap.innerHTML = '<p class="text-xs text-[#6B6B6B] text-center p-4">Загрузка…</p>';
+    // Показываем "Загрузка…" только при первом вызове
+    const isFirst = !wrap.querySelector('.notif-row');
+    if (isFirst) wrap.innerHTML = '<p class="text-xs text-[#6B6B6B] text-center p-4">Загрузка…</p>';
+
     try {
         const list = await window.api.get('/api/notifications/?limit=50');
         if (!list || list.length === 0) {
-            wrap.innerHTML = '<p class="text-xs text-[#6B6B6B] text-center p-4">Уведомлений пока нет</p>';
+            _smoothReplace(wrap, '<p class="text-xs text-[#6B6B6B] text-center p-4">Уведомлений пока нет</p>');
             return;
         }
-        wrap.innerHTML = list.map(n => {
+        const newHtml = list.map(n => {
             const st = _notifStyle(n.title);
             const text = n.message ? `${n.title}: ${n.message}` : n.title;
             return `
@@ -826,17 +881,47 @@ async function loadMgrNotifications() {
                 <span class="text-[10px] text-[#6B6B6B] shrink-0 ml-1">${_esc(_notifTimeShort(n.created_at))}</span>
               </div>`;
         }).join('');
+        // Обновляем плавно только при реальных изменениях
+        _smoothReplace(wrap, newHtml);
     } catch (err) {
-        wrap.innerHTML = `<p class="text-xs text-red-400 text-center p-4">Ошибка: ${_esc(err.message || '')}</p>`;
+        if (isFirst) wrap.innerHTML = `<p class="text-xs text-red-400 text-center p-4">Ошибка: ${_esc(err.message || '')}</p>`;
+        // При фоновой ошибке — не стираем актуальные уведомления
     }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('workers-grid')) loadWorkersGrid();
     if (document.getElementById('tasks-grid')) loadTasksGrid();
-    if (document.getElementById('mgr-active-tasks')) loadMgrActiveTasks();
-    if (document.getElementById('mgr-employees-list')) loadMgrEmployees();
+    if (document.getElementById('mgr-active-tasks')) {
+        loadMgrActiveTasks();
+        // Живые таймеры — тикают каждую секунду
+        setInterval(_tickActiveTimers, 1000);
+        // Автообновление списка задач — каждые 15 секунд
+        setInterval(loadMgrActiveTasks, 15000);
+    }
+    if (document.getElementById('mgr-employees-list')) {
+        loadMgrEmployees();
+        // Обновляем статусы сотрудников каждые 20 секунд
+        setInterval(loadMgrEmployees, 20000);
+    }
     if (document.getElementById('mgr-profile-name')) loadMgrProfile();
-    if (document.getElementById('mgr-notif-list')) loadMgrNotifications();
+    if (document.getElementById('mgr-notif-list')) {
+        loadMgrNotifications();
+        // Новые уведомления каждые 30 секунд
+        setInterval(loadMgrNotifications, 30000);
+    }
+
+    // ── Мгновенные обновления через WebSocket (если ws.js подключён) ─────────
+    // При любом изменении статуса тикета — обновляем активные задачи,
+    // список сотрудников, уведомления и таблицу тикетов менеджера.
+    function _onWsTicketEvent() {
+        if (document.getElementById('mgr-active-tasks'))   loadMgrActiveTasks();
+        if (document.getElementById('mgr-employees-list')) loadMgrEmployees();
+        if (document.getElementById('mgr-notif-list'))     loadMgrNotifications();
+        if (document.getElementById('tasks-grid'))         loadTasksGrid();
+        if (document.getElementById('workers-grid'))       loadWorkersGrid();
+    }
+    window.addEventListener('ws:ticket_status_changed', _onWsTicketEvent);
+    window.addEventListener('ws:ticket_assigned',       _onWsTicketEvent);
 });
 

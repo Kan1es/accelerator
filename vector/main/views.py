@@ -1,4 +1,6 @@
 from django.db import transaction
+from django.db.models import Q
+from datetime import datetime
 from django.shortcuts import render
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.decorators import api_view, permission_classes
@@ -13,6 +15,51 @@ from .serializers import ShiftEndResponseSerializer, ErrorResponseSerializer, Sh
 
 from .tasks import monitor_deadline, feedback_for_ml
 from .utils import auto_assign_from_queue, notify_manager, send_websocket_notification
+
+
+def _is_manager(employee):
+    return bool(employee and employee.role and (employee.role.power or 0) >= 5)
+
+
+def _employee_on_shift(employee):
+    now = timezone.now()
+    return WorkShift.objects.filter(
+        employee=employee,
+        is_active=True,
+        start_time__lte=now,
+    ).filter(Q(end_time__isnull=True) | Q(end_time__gt=now)).exists()
+
+
+def _ticket_department(ticket):
+    if ticket.category and ticket.category.department:
+        return ticket.category.department
+    if ticket.assignee and ticket.assignee.department:
+        return ticket.assignee.department
+    if ticket.creator and ticket.creator.department:
+        return ticket.creator.department
+    return None
+
+
+def _department_manager(department):
+    if not department:
+        return None
+    return Employee.objects.filter(
+        department=department,
+        is_active=True,
+        role__power__gte=5,
+    ).order_by('-role__power', 'id').first()
+
+
+def _parse_deadline(value):
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+    except ValueError:
+        return None
+    if timezone.is_naive(parsed):
+        parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+    return parsed
 
 
 @swagger_auto_schema(
@@ -173,7 +220,7 @@ def accept_ticket(request, id):
             {'error': 'Тикет уже в работе'},
             status=status.HTTP_400_BAD_REQUEST
         )
-    if ticket.status in ('resolved', 'closed', 'expired'):
+    if ticket.status in ('resolved', 'closed', 'expired', 'declined'):
         return Response(
             {'error': f'Нельзя принять тикет в статусе {ticket.status}'},
             status=status.HTTP_400_BAD_REQUEST
@@ -247,11 +294,14 @@ def decline_ticket(request, id):
             status=status.HTTP_403_FORBIDDEN
         )
 
-    if ticket.status in ('resolved', 'closed', 'expired'):
+    if ticket.status in ('resolved', 'closed', 'expired', 'declined'):
         return Response(
             {'error': f'Нельзя отклонить тикет в статусе {ticket.status}'},
             status=status.HTTP_400_BAD_REQUEST
         )
+    reason = (request.data.get('reason') or '').strip()
+    not_mine = bool(request.data.get('not_mine'))
+
     with transaction.atomic():
         ticket = Ticket.objects.select_for_update().get(id=id)
         if ticket.assignee != employee:
@@ -260,10 +310,13 @@ def decline_ticket(request, id):
         employee.is_busy = False
         employee.save(update_fields=['is_busy'])
 
-        ticket.priority += 10
         ticket.assignee = None
-        ticket.status = 'open'
-        ticket.save(update_fields=['priority', 'assignee', 'status'])
+        ticket.status = 'declined'
+        ticket.decline_reason = reason
+        ticket.decline_not_mine = not_mine
+        ticket.declined_by = employee
+        ticket.declined_at = timezone.now()
+        ticket.save(update_fields=['assignee', 'status', 'decline_reason', 'decline_not_mine', 'declined_by', 'declined_at'])
 
         open_assignment = TicketAssignment.objects.filter(ticket=ticket, is_resolved=False).first()
         if open_assignment:
@@ -271,32 +324,32 @@ def decline_ticket(request, id):
             open_assignment.is_resolved = True
             open_assignment.save(update_fields=['resolved_time', 'is_resolved'])
 
-        department = None
-        if ticket.category and ticket.category.department:
-            department = ticket.category.department
-        if not department and employee.department:
-            department = employee.department
+        department = _ticket_department(ticket) or employee.department
+        TaskQueue.objects.filter(ticket=ticket, is_activated=True).update(is_activated=False)
 
-        TaskQueue.objects.create(
-            ticket=ticket,
-            department=department,
-            priority=ticket.priority,
-            wait_start_time=timezone.now(),
-            assigned_time=timezone.now(),
-            is_activated=True
+    reason_text = reason or 'Причина не указана'
+    if ticket.creator:
+        Notification.objects.create(
+            recipient=ticket.creator,
+            title=f'Задача #{ticket.id} отклонена',
+            message=f'{employee.name} не принял задачу. Причина: {reason_text}',
+            link='/employee_tasks.html',
         )
-
-    auto_assign_from_queue()
-
-    if department:
-        notify_manager(department, ticket)
+    manager = _department_manager(department)
+    if manager and manager != ticket.creator:
+        Notification.objects.create(
+            recipient=manager,
+            title=f'Задача #{ticket.id} ждет переназначения',
+            message=f'{employee.name} отклонил задачу. Причина: {reason_text}',
+            link='/manager_tasks.html',
+        )
 
     return Response(
         {
             'id': ticket.id,
             'status': ticket.status,
             'priority': ticket.priority,
-            'detail': 'Тикет отклонён, возвращён в очередь'
+            'detail': 'Задача отклонена и отправлена менеджеру'
         },
         status=status.HTTP_200_OK
     )
@@ -386,3 +439,79 @@ def complete_ticket(request, id):
         },
         status=status.HTTP_200_OK
     )
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def reassign_ticket(request, id):
+    try:
+        manager = request.user.employee
+    except (AttributeError, Employee.DoesNotExist):
+        return Response({'error': 'Пользователь не привязан к сотруднику'}, status=status.HTTP_400_BAD_REQUEST)
+    if not (_is_manager(manager) or request.user.is_staff):
+        return Response({'error': 'Только менеджер может переназначать задачи'}, status=status.HTTP_403_FORBIDDEN)
+
+    assignee_id = request.data.get('assignee_id')
+    if not assignee_id:
+        return Response({'error': 'assignee_id обязателен'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        assignee = Employee.objects.get(id=int(assignee_id), is_active=True)
+        ticket = Ticket.objects.select_related('category', 'creator', 'assignee').get(id=id)
+    except (Employee.DoesNotExist, ValueError, TypeError):
+        return Response({'error': 'Исполнитель не найден'}, status=status.HTTP_400_BAD_REQUEST)
+    except Ticket.DoesNotExist:
+        return Response({'error': 'Тикет не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+    if not _employee_on_shift(assignee):
+        return Response({'error': 'Исполнитель не на смене'}, status=status.HTTP_400_BAD_REQUEST)
+    if assignee.is_busy:
+        return Response({'error': 'Исполнитель уже занят'}, status=status.HTTP_400_BAD_REQUEST)
+    if ticket.status not in ('declined', 'open', 'assigned'):
+        return Response({'error': 'Эту задачу сейчас нельзя переназначить'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        priority = int(request.data.get('priority', ticket.priority))
+    except (TypeError, ValueError):
+        priority = ticket.priority
+    deadline = _parse_deadline(request.data.get('deadline')) if 'deadline' in request.data else ticket.deadline
+
+    with transaction.atomic():
+        ticket = Ticket.objects.select_for_update().get(id=id)
+        if ticket.assignee:
+            ticket.assignee.is_busy = False
+            ticket.assignee.save(update_fields=['is_busy'])
+        TicketAssignment.objects.filter(ticket=ticket, is_resolved=False).update(
+            resolved_time=timezone.now(),
+            is_resolved=True,
+        )
+        TaskQueue.objects.filter(ticket=ticket, is_activated=True).update(is_activated=False)
+
+        ticket.assignee = assignee
+        ticket.status = 'assigned'
+        ticket.priority = max(1, min(10, priority))
+        ticket.deadline = deadline
+        ticket.decline_reason = ''
+        ticket.decline_not_mine = False
+        ticket.declined_by = None
+        ticket.declined_at = None
+        ticket.save(update_fields=[
+            'assignee', 'status', 'priority', 'deadline', 'decline_reason',
+            'decline_not_mine', 'declined_by', 'declined_at'
+        ])
+        TicketAssignment.objects.create(
+            ticket=ticket,
+            assignee=assignee,
+            assigner=manager,
+            assigned_time=timezone.now(),
+            is_resolved=False,
+        )
+        assignee.is_busy = True
+        assignee.save(update_fields=['is_busy'])
+
+    Notification.objects.create(
+        recipient=assignee,
+        title=f'Новая задача #{ticket.id}',
+        message=ticket.description[:200] if ticket.description else 'Без описания',
+        link='/employee_tasks.html',
+    )
+    return Response({'id': ticket.id, 'status': ticket.status, 'assignee_id': assignee.id}, status=status.HTTP_200_OK)

@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+﻿document.addEventListener('DOMContentLoaded', () => {
 
     // ===== ЧАТ (БОКОВАЯ ПАНЕЛЬ) =====
     const toggle = document.getElementById('chat-toggle');
@@ -337,7 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <span class="dot">•</span>
                             <div>
                                 <p class="text-sm">${_e(t.category_name || 'Без категории')}</p>
-                                <span class="muted">№${t.id} • ${_e(_emp_statusLabel(t.status))}</span>
+                                <span class="muted">в„–${t.id} • ${_e(_emp_statusLabel(t.status))}</span>
                             </div>
                         </div>
                     `).join('');
@@ -359,7 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="flex flex-col md:flex-row items-center text-center md:text-left gap-4 md:gap-8">
                                 <div class="bg-[#FF7A00] w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center shrink-0"></div>
                                 <div>
-                                    <h4 class="font-[500] text-xl md:text-2xl uppercase tracking-tighter">Задача №${t.id}</h4>
+                                    <h4 class="font-[500] text-xl md:text-2xl uppercase tracking-tighter">Задача в„–${t.id}</h4>
                                     <p class="text-xs md:text-sm muted">${_e(t.category_name || 'Без категории')} • приоритет ${t.priority}</p>
                                 </div>
                             </div>
@@ -488,7 +488,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// ===== ГЛОБАЛЬНЫЕ ФУНКЦИИ УПРАВЛЕНИЯ =====
+// ===== ГЛОБАЛЬНЫЕ ФУНКЦ?? УПРАВЛЕН?Я =====
 
 window.setChatQuery = function (text) {
     const input = document.getElementById('chat-input');
@@ -500,7 +500,7 @@ window.setChatQuery = function (text) {
 
 // Функция для Alpine.js (TaskManager)
 // Этот объект Alpine подхватит автоматически при инициализации x-data="taskManager()"
-// Мапинг статусов: бэк (Ticket.status) → UI (taskManager).
+// Мапинг статусов: бэк (Ticket.status) в†’ UI (taskManager).
 const TICKET_STATUS_TO_UI = {
     open: 'assigned',
     assigned: 'assigned',
@@ -508,6 +508,7 @@ const TICKET_STATUS_TO_UI = {
     resolved: 'done',
     closed: 'done',
     expired: 'done',
+    declined: 'done',
 };
 
 function _ticketToTask(t) {
@@ -520,21 +521,22 @@ function _ticketToTask(t) {
         id: t.id,
         title: t.category_name || 'Без категории',
         dept: t.assignee_name
-            ? `Исполнитель: ${t.assignee_name}`
+            ? `?сполнитель: ${t.assignee_name}`
             : (inQueue ? '🕒 В очереди — ждём свободного исполнителя' : 'Не назначен'),
         // Кто заявил о проблеме (creator) и кто реально распределил исполнителя
         // (assigner из TicketAssignment). Если ещё никто не назначен — диспетчер
-        // ещё не определён (тикет в очереди ИИ-агента).
+        // ещё не определён (тикет в очереди ??-агента).
         initiator: t.creator_name || '—',
         assigner: inQueue
-            ? '🤖 ИИ-агент «Вектор» (ожидание)'
-            : (t.assigner_name || '🤖 ИИ-агент «Вектор»'),
+            ? '🤖 ??-агент «Вектор» (ожидание)'
+            : (t.assigner_name || '🤖 ??-агент «Вектор»'),
         comment: t.description,
-        status: TICKET_STATUS_TO_UI[t.status] || 'assigned',
+        status: inQueue ? 'queued' : (TICKET_STATUS_TO_UI[t.status] || 'assigned'),
         rawStatus: t.status,
         deadline: t.deadline ? new Date(t.deadline).toLocaleTimeString('ru', {hour: '2-digit', minute: '2-digit'}) : 'Без срока',
         assigneeId: t.assignee_id,
         priority: t.priority,
+        isOverdue: Boolean(t.deadline && new Date(t.deadline).getTime() < Date.now() && !['resolved', 'closed'].includes(t.status)),
     };
 }
 
@@ -543,7 +545,11 @@ function taskManager() {
         search: '',
         filter: 'all',
         showConfirm: false,
+        showDecline: false,
         pendingTaskId: null,
+        declineTaskId: null,
+        declineReason: '',
+        declineNotMine: false,
         loading: false,
         loadError: null,
         tasks: [],
@@ -626,6 +632,7 @@ function taskManager() {
         },
 
         statusStyles: {
+            queued: { label: 'В очереди' },
             assigned: { label: 'Принять' },
             progress: { label: 'В работе' },
             done: { label: 'Выполнено' }
@@ -634,6 +641,7 @@ function taskManager() {
         async changeStatus(id) {
             const task = this.tasks.find(t => t.id === id);
             if (!task) return;
+            if (task.status === 'queued') return;
 
             if (task.status === 'assigned') {
                 try {
@@ -650,6 +658,11 @@ function taskManager() {
         },
 
         async declineTask(id) {
+            this.declineTaskId = id;
+            this.declineReason = '';
+            this.declineNotMine = false;
+            this.showDecline = true;
+            return;
             if (!confirm('Отклонить задачу?')) return;
             try {
                 const resp = await window.api.patch(`/api/tickets/${id}/decline/`, {});
@@ -718,9 +731,9 @@ function supportChat() {
             this.showInitialButtons = false;
             this.addMessage('user', 'Да, давай попробуем');
             setTimeout(() => {
-                this.addMessage('bot', 'Делаю запрос к интеллектуальной системе "ВЕКТОР-ИИ"...');
+                this.addMessage('bot', 'Делаю запрос к интеллектуальной системе "ВЕКТОР-??"...');
                 setTimeout(() => {
-                    this.addMessage('bot', 'Ошибка: API-ключ не найден. Система ИИ временно недоступна. Пожалуйста, введите ваш вопрос вручную для оператора.');
+                    this.addMessage('bot', 'Ошибка: API-ключ не найден. Система ?? временно недоступна. Пожалуйста, введите ваш вопрос вручную для оператора.');
                 }, 1500);
             }, 800);
         },
@@ -755,3 +768,22 @@ function supportChat() {
         }
     }
 }
+
+window.confirmEmployeeDecline = async function(component) {
+    const id = component.declineTaskId;
+    if (!id) return;
+    try {
+        await window.api.patch(`/api/tickets/${id}/decline/`, {
+            reason: component.declineReason || '',
+            not_mine: Boolean(component.declineNotMine),
+        });
+        component.tasks = component.tasks.filter(t => t.id !== id);
+    } catch (err) {
+        alert(err.message || 'Не удалось отклонить задачу');
+    } finally {
+        component.showDecline = false;
+        component.declineTaskId = null;
+        component.declineReason = '';
+        component.declineNotMine = false;
+    }
+};

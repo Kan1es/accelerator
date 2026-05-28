@@ -293,3 +293,152 @@ window.reclassifyTicket = async function(ticketId, rcId) {
 }
 
 
+function _escChat(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+    }[ch]));
+}
+
+let pendingTicketText = '';
+let pendingTicketFormElement = null;
+
+function _insertBotHtml(innerHtml) {
+    const chatBox = document.getElementById('chat-box');
+    if (!chatBox) return null;
+    chatBox.insertAdjacentHTML('beforeend', `
+        <div class="flex gap-4 md:gap-6 animate-gentle self-start max-w-[80%]">
+            <div class="w-10 h-10 md:w-12 md:h-12 shrink-0 bg-[#151515] border border-[#2A2A2A] rounded-xl flex items-center justify-center">
+                <img src="images/ВЕКТОР.svg" class="w-6 h-6 md:w-8 md:h-8">
+            </div>
+            <div class="space-y-2">
+                <p class="text-sm text-[#FF7A00] font-semibold">ВЕКТОР</p>
+                ${innerHtml}
+            </div>
+        </div>
+    `);
+    chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+    return chatBox.lastElementChild;
+}
+
+function showTicketConfirmForm(text) {
+    if (pendingTicketFormElement) pendingTicketFormElement.remove();
+    pendingTicketText = text;
+    pendingTicketFormElement = _insertBotHtml(`
+        <div class="bg-[#151515] border border-[#2A2A2A] p-4 rounded-[20px] rounded-tl-none text-sm md:text-md leading-relaxed text-white space-y-3">
+            <p>Проверьте заявку перед созданием.</p>
+            <textarea id="chat-ticket-text" rows="4" class="w-full bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg p-3 outline-none focus:border-[#FF7A00] resize-none">${_escChat(text)}</textarea>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <label class="space-y-1">
+                    <span class="block text-xs text-[#6B6B6B]">Критичность</span>
+                    <select id="chat-ticket-priority" class="w-full bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg px-3 py-2 outline-none focus:border-[#FF7A00]">
+                        <option value="3">Низкая (3)</option>
+                        <option value="5" selected>Обычная (5)</option>
+                        <option value="7">Высокая (7)</option>
+                        <option value="10">Критическая (10)</option>
+                    </select>
+                </label>
+                <label class="space-y-1">
+                    <span class="block text-xs text-[#6B6B6B]">Дедлайн, если есть</span>
+                    <input id="chat-ticket-deadline" type="datetime-local" class="w-full bg-[#0D0D0D] border border-[#2A2A2A] rounded-lg px-3 py-2 outline-none focus:border-[#FF7A00]">
+                </label>
+            </div>
+            <div id="chat-ticket-error" class="hidden text-xs text-red-400"></div>
+            <div class="flex flex-wrap gap-2">
+                <button onclick="window.createTicketFromChat()" class="bg-[#FF7A00] hover:bg-[#FF9A3C] text-white px-4 py-2 rounded-lg transition-colors">Создать заявку</button>
+                <button onclick="window.cancelTicketFromChat()" class="bg-[#1F1F1F] hover:bg-[#252525] text-white px-4 py-2 rounded-lg border border-white/5 transition-colors">Не создавать</button>
+            </div>
+        </div>
+    `);
+}
+
+window.sendMessage = async function() {
+    const input = document.getElementById('user-input');
+    if (!input) return;
+    const text = input.value.trim();
+    if (!text) return;
+    addUserMessage(text);
+    input.value = '';
+    if (!window.api || !window.api.getToken()) {
+        addBotMessage('Для отправки обращения необходимо <a href="/login.html" class="underline text-[#FF7A00]">войти</a>.');
+        return;
+    }
+    showTicketConfirmForm(text);
+};
+
+window.cancelTicketFromChat = function() {
+    if (pendingTicketFormElement) pendingTicketFormElement.remove();
+    pendingTicketFormElement = null;
+    pendingTicketText = '';
+    addBotMessage('Ок, заявку не создаю. Можете написать новый текст.');
+};
+
+window.createTicketFromChat = async function() {
+    const textEl = document.getElementById('chat-ticket-text');
+    const priorityEl = document.getElementById('chat-ticket-priority');
+    const deadlineEl = document.getElementById('chat-ticket-deadline');
+    const errorEl = document.getElementById('chat-ticket-error');
+    const text = (textEl?.value || pendingTicketText || '').trim();
+    if (!text) {
+        if (errorEl) {
+            errorEl.textContent = 'Текст заявки не может быть пустым';
+            errorEl.classList.remove('hidden');
+        }
+        return;
+    }
+
+    const payload = {
+        text,
+        priority: parseInt(priorityEl?.value || '5', 10),
+        deadline: deadlineEl?.value ? new Date(deadlineEl.value).toISOString() : null,
+    };
+
+    try {
+        const [data, categories] = await Promise.all([
+            window.api.post('/api/agent/classify/', payload),
+            _loadCategories(),
+        ]);
+        if (pendingTicketFormElement) pendingTicketFormElement.remove();
+        pendingTicketFormElement = null;
+        pendingTicketText = '';
+
+        const confidencePct = Math.round((data.confidence || 0) * 100);
+        const rcId = `rc-${data.ticket_id}`;
+        const optionsHTML = categories.map(c => `<option value="${c.id}">${_escChat(c.name)}</option>`).join('');
+        const reclassifyBlock = categories.length > 0 ? `
+            <div id="${rcId}-block" class="bg-[#1a1a1a] border border-[#2A2A2A] p-3 rounded-[16px] space-y-2">
+                <p class="text-xs text-[#6B6B6B]">Категория неверная? Можно исправить вручную:</p>
+                <div class="flex gap-2">
+                    <select id="${rcId}-select" class="flex-1 bg-[#0d0d0d] border border-[#2A2A2A] text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-[#FF7A00]">
+                        <option value="">— выберите категорию —</option>${optionsHTML}
+                    </select>
+                    <button onclick="window.reclassifyTicket(${data.ticket_id}, '${rcId}')" class="bg-[#FF7A00] hover:bg-[#FF9A3C] text-white text-sm px-4 py-2 rounded-lg transition-colors whitespace-nowrap">Изменить</button>
+                </div>
+            </div>` : '';
+
+        const deadlineText = data.deadline ? new Date(data.deadline).toLocaleString('ru') : 'без срока';
+        const assigneeText = data.assignee_name ? `Исполнитель: <span class="text-[#FF7A00]">${_escChat(data.assignee_name)}</span>` : 'Свободного исполнителя сейчас нет, задача поставлена в очередь менеджеру.';
+        _insertBotHtml(`
+            <div class="bg-[#151515] border border-[#2A2A2A] p-4 rounded-[20px] rounded-tl-none text-sm md:text-md leading-relaxed text-white">
+                Заявка №${data.ticket_id} создана.<br>
+                Категория: <span class="text-[#FF7A00]" id="${rcId}-cat">${_escChat(data.category)}</span> (${confidencePct}%).<br>
+                Отдел: ${_escChat(data.department_name || 'не определен')}.<br>
+                ${assigneeText}<br>
+                Критичность: ${data.priority}. Дедлайн: ${_escChat(deadlineText)}.
+            </div>
+            ${reclassifyBlock}
+        `);
+    } catch (err) {
+        if (errorEl) {
+            errorEl.textContent = err.message || 'Не удалось создать заявку';
+            errorEl.classList.remove('hidden');
+        } else {
+            addBotMessage(err.message || 'Не удалось создать заявку');
+        }
+    }
+};
+
+

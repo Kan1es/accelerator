@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 
 <head>
@@ -87,7 +87,7 @@
                         <div class="flex items-center gap-2 bg-black/40 p-2 px-3 rounded-xl border border-white/5">
                             <input id="chat-input" class="bg-transparent outline-none text-sm flex-1" type="text"
                                 placeholder="Спросить...">
-                            <button class="text-[#FF7A00]">➤</button>
+                            <button class="text-[#FF7A00]">вћ¤</button>
                         </div>
                     </div>
                 </div>
@@ -108,7 +108,7 @@
                             </svg>
                         </div>
                         <h3 class="text-xl font-bold uppercase mb-2">Завершить задачу?</h3>
-                        <p class="text-gray-400 text-sm mb-6">Вы подтверждаете, что работа по задаче №<span
+                        <p class="text-gray-400 text-sm mb-6">Вы подтверждаете, что работа по задаче в„–<span
                                 x-text="pendingTaskId"></span> выполнена?</p>
                         <div class="flex gap-3">
                             <button @click="confirmDone()"
@@ -121,7 +121,25 @@
                 </div>
             </template>
 
-            <div class="p-1 md:p-10 border-b border-white/5 shrink-0"> <!--ПРОБЛЕМА АДАПТАЦИИ НА МОБИЛКИ-->
+            <template x-if="showDecline">
+                <div class="absolute inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <div class="bg-[#111111] border border-white/10 p-8 rounded-[5px] max-w-lg w-full shadow-2xl">
+                        <h3 class="text-xl font-bold uppercase mb-2">Отменить задачу?</h3>
+                        <p class="text-gray-400 text-sm mb-4">Укажите причину, чтобы автор и менеджер поняли, что делать дальше.</p>
+                        <textarea x-model="declineReason" rows="4" class="modal-input resize-none mb-3" placeholder="Почему задача не подходит?"></textarea>
+                        <label class="flex items-center gap-2 text-sm text-[#B3B3B3] mb-6">
+                            <input type="checkbox" x-model="declineNotMine" class="accent-[#FF7A00]">
+                            <span>Задача не моя</span>
+                        </label>
+                        <div class="flex gap-3">
+                            <button @click="window.confirmEmployeeDecline($data)" class="flex-1 bg-[#FF7A00] hover:bg-[#FF9A3C] text-white font-semibold py-3 rounded-[3px] transition-colors text-sm">Отменить задачу</button>
+                            <button @click="showDecline=false; declineTaskId=null" class="flex-1 bg-[#1F1F1F] hover:bg-[#252525] text-white py-3 rounded-[3px] transition-colors text-sm border border-white/5">Назад</button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <div class="p-1 md:p-10 border-b border-white/5 shrink-0"> <!--ПРОБЛЕМА АДАПТАЦ?? НА МОБ?ЛК?-->
                 <h1 class="text-2xl md:text-4xl font-[500] mb-6">Мои задачи</h1>
 
                 <div class="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
@@ -156,7 +174,7 @@
 
                         <div class="flex flex-col gap-2">
                             <h4 class="text-xl font-bold text-white tracking-tight">
-                                Задача №<span x-text="task.id"></span> – <span x-text="task.title"></span>
+                                Задача в„–<span x-text="task.id"></span> – <span x-text="task.title"></span>
                             </h4>
 
                             <div class="space-y-1">
@@ -190,7 +208,7 @@
                                 }">
                                 <template x-if="task.status === 'assigned'">📑</template>
                                 <template x-if="task.status === 'progress'">🕒</template>
-                                <template x-if="task.status === 'done'">✅</template>
+                                <template x-if="task.status === 'done'">вњ…</template>
 
                                 <span x-text="statusStyles[task.status].label"></span>
                             </button>
@@ -198,6 +216,13 @@
                             <span x-show="task.status !== 'done'"
                                 class="text-xs text-[#6B6B6B] text-center md:text-right leading-none">
                                 нажмите для<br>переключения статуса
+                            </span>
+                            <button x-show="task.status !== 'done' && task.status !== 'queued'" @click="declineTask(task.id)"
+                                class="min-w-[140px] px-4 py-2 rounded border border-red-500/60 text-red-400 bg-red-500/5 hover:border-red-400 transition-all font-bold text-sm uppercase">
+                                Отменить
+                            </button>
+                            <span x-show="task.isOverdue" class="text-xs text-red-400 text-center md:text-right">
+                                Дедлайн просрочен
                             </span>
                         </div>
                     </div>
@@ -251,3 +276,4 @@
 </body>
 
 </html>
+

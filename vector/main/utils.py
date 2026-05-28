@@ -3,7 +3,7 @@ from django.db.models import Count, Q
 from django.utils import timezone
 
 from .consumers import NotificationConsumer
-from .models import Notification, TaskQueue, Employee, TicketAssignment
+from .models import Notification, TaskQueue, Employee, TicketAssignment, WorkShift
 
 
 def notification(employee, title, message, link=None):
@@ -20,10 +20,16 @@ def _pick_least_loaded_employee(department):
     активных назначений за всю историю (round-robin по нагрузке).
     Исключает руководителей (role.power >= 5) — они только распределяют.
     """
+    now = timezone.now()
+    on_shift_ids = WorkShift.objects.filter(
+        is_active=True,
+        start_time__lte=now,
+    ).filter(Q(end_time__isnull=True) | Q(end_time__gt=now)).values('employee_id')
     qs = Employee.objects.filter(
         department=department,
         is_busy=False,
         is_active=True,
+        id__in=on_shift_ids,
     ).exclude(role__power__gte=5)
     qs = qs.annotate(
         active_count=Count(

@@ -43,6 +43,30 @@ window.api = (function () {
         };
     }
 
+    function dashboardHref(role) {
+        return role === 'manager' ? '/manager_dashboard.html' : '/employee_dashboard.html';
+    }
+
+    function initAuthChrome() {
+        const session = getSession();
+        if (!session.token) return;
+        const loginLink = document.querySelector('a[href="login.html"], a[href="/login.html"]');
+        if (loginLink) {
+            loginLink.href = dashboardHref(session.role);
+            loginLink.textContent = 'Кабинет';
+        }
+        const host = document.querySelector('header nav') || document.querySelector('header');
+        if (host && !document.getElementById('logout-button')) {
+            const btn = document.createElement('button');
+            btn.id = 'logout-button';
+            btn.type = 'button';
+            btn.textContent = 'Выйти';
+            btn.className = 'nav-item text-m md:text-xl font-light hover:text-[#FF9A3C]';
+            btn.addEventListener('click', () => window.api.logout());
+            host.appendChild(btn);
+        }
+    }
+
     async function request(method, url, body, { auth = true, timeoutMs = 15000 } = {}) {
         const headers = { 'Accept': 'application/json' };
         if (body !== undefined && body !== null) {
@@ -112,6 +136,8 @@ window.api = (function () {
         getSession,
         setSession,
         clearSession,
+        dashboardHref,
+        initAuthChrome,
 
         async login(loginVal, password, role) {
             const data = await this.post('/api/auth/login/',
@@ -136,3 +162,7 @@ window.api = (function () {
         },
     };
 })();
+
+document.addEventListener('DOMContentLoaded', () => {
+    window.api?.initAuthChrome?.();
+});

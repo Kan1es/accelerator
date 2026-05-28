@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import shift_start, shift_end, employee_status, accept_ticket, decline_ticket, complete_ticket
+from .views import shift_start, shift_end, employee_status, accept_ticket, decline_ticket, complete_ticket, reassign_ticket
 from .views_analytics import ml_accuracy, analitic_agregation, avg_time, escalation_analytics, category_counter_tickets, classificate_and_create_ticket
 from .views_mobile import mobile_employees_list, mobile_tickets_list, mobile_notify_employee, mobile_predict
 from .views_auth import login_view, logout_view, me_view
@@ -24,6 +24,7 @@ urlpatterns = [
     path('api/tickets/<int:id>/reclassify/', reclassify_ticket, name='reclassify-ticket'),
     path('api/tickets/<int:id>/accept/', accept_ticket, name='accept-ticket'),
     path('api/tickets/<int:id>/decline/', decline_ticket, name='decline-ticket'),
+    path('api/tickets/<int:id>/reassign/', reassign_ticket, name='reassign-ticket'),
     path('api/tickets/<int:id>/complete/', complete_ticket, name='complete-ticket'),
     path('api/mobile/employees/', mobile_employees_list, name='mobile-employees-list'),
     path('api/mobile/tickets/', mobile_tickets_list, name='mobile-tickets-list'),

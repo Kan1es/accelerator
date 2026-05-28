@@ -72,16 +72,24 @@ WSGI_APPLICATION = 'vector.wsgi.application'
 ASGI_APPLICATION = 'vector.asgi.application'
 
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME':     os.getenv('POSTGRES_DB', 'vector'),
-        'USER':     os.getenv('POSTGRES_USER', 'vector'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'postgres'),
-        'HOST':     os.getenv('POSTGRES_HOST', 'localhost'),
-        'PORT':     os.getenv('POSTGRES_PORT', '5432'),
+if os.getenv('USE_SQLITE') == '1':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME':     os.getenv('POSTGRES_DB', 'vector'),
+            'USER':     os.getenv('POSTGRES_USER', 'vector'),
+            'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'postgres'),
+            'HOST':     os.getenv('POSTGRES_HOST', 'localhost'),
+            'PORT':     os.getenv('POSTGRES_PORT', '5432'),
+        }
+    }
 
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -115,17 +123,24 @@ CELERY_TIMEZONE = 'UTC'
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
 # Django Channels (Redis)
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            "hosts": [(
-                os.getenv('REDIS_HOST', '127.0.0.1'),
-                int(os.getenv('REDIS_PORT', '6379')),
-            )],
+if os.getenv('USE_SQLITE') == '1':
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
         },
-    },
-}
+    }
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                "hosts": [(
+                    os.getenv('REDIS_HOST', '127.0.0.1'),
+                    int(os.getenv('REDIS_PORT', '6379')),
+                )],
+            },
+        },
+    }
 
 # ML Service (FastAPI в ml_service/app.py, порт задаётся в .env)
 ML_SERVICE_URL = os.getenv('ML_SERVICE_URL', 'http://ml-service:8000')

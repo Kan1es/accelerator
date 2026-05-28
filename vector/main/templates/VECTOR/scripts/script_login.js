@@ -1,4 +1,4 @@
-
+﻿
 const CONFIG = {
     REDIRECT: {
         employee: 'employee_dashboard.html',
@@ -15,6 +15,11 @@ const CONFIG = {
 let selectedRole = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+    const session = window.api?.getSession?.();
+    if (session?.token) {
+        window.location.href = window.api.dashboardHref(session.role);
+        return;
+    }
     const text   = 'Здравствуйте, выберите свою роль';
     const target = document.getElementById('tw-role');
     let i = 0;

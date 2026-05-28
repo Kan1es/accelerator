@@ -57,7 +57,8 @@ class Ticket(models.Model):
         ('in_progress', 'In Progress'),
         ('resolved', 'Resolved'),
         ('closed', 'Closed'),
-        ('expired', 'Expired')
+        ('expired', 'Expired'),
+        ('declined', 'Declined'),
     ]
     description = models.TextField()
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
@@ -67,6 +68,11 @@ class Ticket(models.Model):
     creator = models.ForeignKey(Employee, related_name='created_tickets', on_delete=models.SET_NULL, null=True, blank=True)
     assignee = models.ForeignKey(Employee, related_name='assigned_tickets', on_delete=models.SET_NULL, null=True, blank=True)
     deadline = models.DateTimeField(null=True, blank=True)
+    decline_reason = models.TextField(blank=True, null=True)
+    decline_not_mine = models.BooleanField(default=False)
+    declined_by = models.ForeignKey(Employee, related_name='declined_tickets', on_delete=models.SET_NULL, null=True, blank=True)
+    declined_at = models.DateTimeField(null=True, blank=True)
+    deadline_escalated_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"Ticket {self.id} - {self.status}"

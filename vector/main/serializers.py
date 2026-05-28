@@ -97,8 +97,14 @@ class MobileTicketSerializer(serializers.Serializer):
     assigner_name = serializers.CharField(allow_null=True, required=False)
     priority = serializers.IntegerField()
     category_name = serializers.CharField(allow_null=True, required=False)
+    department_name = serializers.CharField(allow_null=True, required=False)
     created_at = serializers.CharField(allow_null=True, required=False)
     deadline = serializers.CharField(allow_null=True, required=False)
+    deadline_escalated_at = serializers.CharField(allow_null=True, required=False)
+    decline_reason = serializers.CharField(allow_blank=True, allow_null=True, required=False)
+    decline_not_mine = serializers.BooleanField(required=False)
+    declined_by_name = serializers.CharField(allow_null=True, required=False)
+    declined_at = serializers.CharField(allow_null=True, required=False)
 
 class SuccessResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
@@ -114,6 +120,11 @@ class ClassificatorSerializator(serializers.Serializer):
     category = serializers.CharField()
     confidence = serializers.FloatField()
     ticket_id = serializers.IntegerField()
+    department_name = serializers.CharField(allow_null=True, required=False)
+    assignee_name = serializers.CharField(allow_null=True, required=False)
+    priority = serializers.IntegerField(required=False)
+    deadline = serializers.CharField(allow_null=True, required=False)
+    status = serializers.CharField(required=False)
 
 
 class AnaliticsResponseSerializer(serializers.Serializer):

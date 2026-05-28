@@ -10,7 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
-from .models import Ticket, Employee, Category, TicketAssignment, Notification, TaskQueue
+from .models import Ticket, Employee, Category, TicketAssignment, Notification, TaskQueue, WorkShift
 
 
 def _is_manager(employee: Employee) -> bool:
@@ -23,10 +23,22 @@ def _parse_deadline(value):
         return None
     if isinstance(value, str):
         try:
-            return datetime.fromisoformat(value.replace('Z', '+00:00'))
+            parsed = datetime.fromisoformat(value.replace('Z', '+00:00'))
+            if timezone.is_naive(parsed):
+                parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+            return parsed
         except ValueError:
             return None
     return None
+
+
+def _employee_on_shift(employee: Employee) -> bool:
+    now = timezone.now()
+    return WorkShift.objects.filter(
+        employee=employee,
+        is_active=True,
+        start_time__lte=now,
+    ).filter(Q(end_time__isnull=True) | Q(end_time__gt=now)).exists()
 
 
 @swagger_auto_schema(
@@ -80,6 +92,10 @@ def create_ticket(request):
         except (Employee.DoesNotExist, ValueError, TypeError):
             return Response({'error': 'Исполнитель не найден'},
                             status=status.HTTP_400_BAD_REQUEST)
+        if not _employee_on_shift(assignee):
+            return Response({'error': 'Исполнитель не на смене'}, status=status.HTTP_400_BAD_REQUEST)
+        if assignee.is_busy:
+            return Response({'error': 'Исполнитель уже занят'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
         priority = int(request.data.get('priority', 5))
@@ -105,6 +121,14 @@ def create_ticket(request):
                 assigner=author,
                 assigned_time=timezone.now(),
                 is_resolved=False,
+            )
+            assignee.is_busy = True
+            assignee.save(update_fields=['is_busy'])
+            Notification.objects.create(
+                recipient=assignee,
+                title=f'Новая задача #{ticket.id}',
+                message=ticket.description[:200] if ticket.description else 'Без описания',
+                link='/employee_tasks.html',
             )
 
     return Response({
@@ -144,6 +168,7 @@ def list_employees(request):
             'role': e.role.name if e.role else None,
             'department_id': e.department_id,
             'is_busy': e.is_busy,
+            'is_on_shift': _employee_on_shift(e),
         }
         for e in qs
     ]
@@ -270,17 +295,20 @@ def my_tickets(request):
             return Response({'error': 'Сотрудник не найден'},
                             status=status.HTTP_404_NOT_FOUND)
 
-    all_statuses = ['open', 'assigned', 'in_progress', 'resolved', 'closed', 'expired']
+    all_statuses = ['open', 'assigned', 'in_progress', 'resolved', 'closed', 'expired', 'declined']
 
     # Суперадмин (is_staff) видит все тикеты без фильтра по исполнителю.
     if request.user.is_staff and not assignee_param:
         tickets = list(Ticket.objects.filter(
             status__in=all_statuses,
-        ).select_related('category', 'creator', 'assignee').order_by('-priority', '-created_at'))
+        ).select_related('category', 'category__department', 'creator', 'assignee', 'declined_by').order_by('-priority', '-created_at'))
     else:
+        filter_q = Q(assignee=target)
+        if not assignee_param:
+            filter_q |= Q(creator=target, assignee__isnull=True)
         tickets = list(Ticket.objects.filter(
-            assignee=target, status__in=all_statuses,
-        ).select_related('category', 'creator', 'assignee').order_by('-priority', '-created_at'))
+            filter_q, status__in=all_statuses,
+        ).select_related('category', 'category__department', 'creator', 'assignee', 'declined_by').order_by('-priority', '-created_at'))
 
     from .views_mobile import _latest_assigner_map
     assigner_map = _latest_assigner_map([t.id for t in tickets])
@@ -293,12 +321,18 @@ def my_tickets(request):
                 'description': t.description,
                 'priority': t.priority,
                 'category_name': t.category.name if t.category else None,
+                'department_name': t.category.department.name if t.category and t.category.department else None,
                 'creator_name': t.creator.name if t.creator else None,
                 'assigner_name': assigner_map.get(t.id),
                 'assignee_id': t.assignee.id if t.assignee else None,
                 'assignee_name': t.assignee.name if t.assignee else None,
                 'created_at': t.created_at.isoformat() if t.created_at else None,
                 'deadline': t.deadline.isoformat() if t.deadline else None,
+                'deadline_escalated_at': t.deadline_escalated_at.isoformat() if t.deadline_escalated_at else None,
+                'decline_reason': t.decline_reason,
+                'decline_not_mine': t.decline_not_mine,
+                'declined_by_name': t.declined_by.name if t.declined_by else None,
+                'declined_at': t.declined_at.isoformat() if t.declined_at else None,
             }
             for t in tickets
         ],

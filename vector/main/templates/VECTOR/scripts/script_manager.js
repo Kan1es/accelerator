@@ -1,4 +1,4 @@
-const taskModal = document.getElementById('task-modal');
+﻿const taskModal = document.getElementById('task-modal');
 const openTaskModalBtn = document.getElementById('open-task-modal');
 const closeTaskModalBtn = document.getElementById('close-task-modal');
 const taskForm = document.getElementById('task-form');
@@ -57,6 +57,58 @@ closeTaskModalBtn?.addEventListener('click', closeTaskModal);
 taskModal?.addEventListener('click', (e) => {
     if (e.target === taskModal) {
         closeTaskModal();
+    }
+});
+
+
+function _ticketCard(t) {
+    const isDeclined = t.status === 'declined';
+    const isOverdue = t.deadline && new Date(t.deadline).getTime() < Date.now() && !['resolved', 'closed'].includes(t.status);
+    const assignee = t.assignee_name || (t.status === 'open' ? 'в очереди, свободных нет' : 'не назначен');
+    const declineBlock = isDeclined ? `
+        <div class="bg-red-500/10 border border-red-500/30 rounded-[5px] p-3 text-xs text-red-100">
+          <p>Отказался: ${_esc(t.declined_by_name || '—')}</p>
+          <p>Причина: ${_esc(t.decline_reason || 'не указана')}</p>
+          <p>${t.decline_not_mine ? 'Отмечено: задача не моя' : 'Без отметки "задача не моя"'}</p>
+        </div>` : '';
+    const reassignButton = isDeclined ? `<button class="js-reassign-ticket mt-2 text-xs px-3 py-2 rounded border border-[#FF7A00] text-[#FF7A00] hover:bg-[#FF7A00]/10" data-ticket-id="${t.id}">Назначить заново</button>` : '';
+    return `
+      <div class="bg-[#151515] border ${isDeclined || isOverdue ? 'border-red-500/50' : 'border-white/5'} rounded-[5px] p-4 flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <p class="font-semibold">Задача в„–${t.id}</p>
+          <span class="text-xs ${isDeclined || isOverdue ? 'text-red-400' : 'text-[#FF9A3C]'}">${_esc(TICKET_STATUS_LABELS[t.status] || t.status)}</span>
+        </div>
+        <p class="text-sm text-[#B3B3B3]">${_esc(t.description)}</p>
+        ${declineBlock}
+        <div class="text-xs text-[#6B6B6B] flex flex-wrap gap-3">
+          <span>Категория: ${_esc(t.category_name || '—')}</span>
+          <span>?сполнитель: ${_esc(assignee)}</span>
+          <span>Приоритет: ${t.priority}</span>
+          ${isOverdue ? '<span class="text-red-400">Дедлайн просрочен</span>' : ''}
+        </div>
+        ${reassignButton}
+      </div>`;
+}
+
+document.addEventListener('click', async (event) => {
+    const btn = event.target.closest('.js-reassign-ticket');
+    if (!btn) return;
+    const ticketId = btn.dataset.ticketId;
+    const employees = await window.api.get('/api/employees/');
+    const choices = employees.filter(e => e.is_on_shift && !e.is_busy);
+    if (!choices.length) {
+        alert('Нет свободных сотрудников на смене');
+        return;
+    }
+    const message = choices.map(e => `${e.id}: ${e.name}`).join('\n');
+    const raw = prompt(`Введите ID исполнителя:\n${message}`);
+    if (!raw) return;
+    try {
+        await window.api.patch(`/api/tickets/${ticketId}/reassign/`, { assignee_id: parseInt(raw, 10) });
+        await loadTasksGrid();
+        if (typeof loadMgrActiveTasks === 'function') await loadMgrActiveTasks();
+    } catch (err) {
+        alert(err.message || 'Не удалось переназначить задачу');
     }
 });
 
@@ -265,9 +317,9 @@ function supportChat() {
             this.showInitialButtons = false;
             this.addMessage('user', 'Да, давай попробуем');
             setTimeout(() => {
-                this.addMessage('bot', 'Делаю запрос к интеллектуальной системе "ВЕКТОР-ИИ"...');
+                this.addMessage('bot', 'Делаю запрос к интеллектуальной системе "ВЕКТОР-??"...');
                 setTimeout(() => {
-                    this.addMessage('bot', 'Ошибка: API-ключ не найден. Система ИИ временно недоступна. Пожалуйста, введите ваш вопрос вручную для оператора.');
+                    this.addMessage('bot', 'Ошибка: API-ключ не найден. Система ?? временно недоступна. Пожалуйста, введите ваш вопрос вручную для оператора.');
                 }, 1500);
             }, 800);
         },
@@ -304,7 +356,7 @@ function supportChat() {
 }
 document.addEventListener('DOMContentLoaded', () => {
 
-    // ─── PROFILE PANEL (manager_workers.html) ─────────────────────────
+    // в”Ђв”Ђв”Ђ PROFILE PANEL (manager_workers.html) в”Ђв”Ђ───────────────────────
     // Открывается при клике по карточке сотрудника. Тянет реальные данные.
 
     function _initials(name) {
@@ -349,7 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     : active.map(t => `
                         <div class="task-card-sm flex justify-between items-center gap-4">
                             <div>
-                                <h3 class="font-semibold text-sm">Задача №${t.id}</h3>
+                                <h3 class="font-semibold text-sm">Задача в„–${t.id}</h3>
                                 <p class="text-[11px] text-[#6B6B6B]">${_esc(t.category_name || '—')}</p>
                             </div>
                             <span class="badge-working shrink-0"><span class="w-1.5 h-1.5 rounded-full bg-[#F59E0B] inline-block"></span>${t.status === 'in_progress' ? 'В работе' : 'Назначена'}</span>
@@ -364,7 +416,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="task-card-sm">
                             <div class="flex justify-between items-start gap-4">
                                 <div>
-                                    <h3 class="font-semibold text-sm">Задача №${t.id}</h3>
+                                    <h3 class="font-semibold text-sm">Задача в„–${t.id}</h3>
                                     <p class="text-[11px] text-[#6B6B6B]">${_esc(t.category_name || '—')}</p>
                                 </div>
                                 <div class="text-right shrink-0">
@@ -383,7 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="done-item">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2.5" class="shrink-0 mt-0.5"><path d="M20 6L9 17l-5-5"/></svg>
                             <div class="flex-1 min-w-0">
-                                <p class="text-sm font-medium text-[#22C55E]">Задача №${t.id}</p>
+                                <p class="text-sm font-medium text-[#22C55E]">Задача в„–${t.id}</p>
                                 <p class="text-[10px] text-[#6B6B6B] truncate">${_esc(t.category_name || '—')}</p>
                             </div>
                         </div>
@@ -464,11 +516,11 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-// ───────────────────────────────────────────────────────────────────────────
+// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 // Подключение фронта менеджера к Django API.
 // На manager_workers.html — список сотрудников (#workers-grid).
 // На manager_tasks.html — список тикетов (#tasks-grid) + донат-чарт.
-// ───────────────────────────────────────────────────────────────────────────
+// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
 const TICKET_STATUS_LABELS = {
     open: 'Открыт',
@@ -478,6 +530,8 @@ const TICKET_STATUS_LABELS = {
     closed: 'Закрыт',
     expired: 'Просрочен',
 };
+TICKET_STATUS_LABELS.declined = 'Отклонена';
+TICKET_STATUS_LABELS.open = 'Ожидает исполнителя';
 
 function _esc(s) {
     return String(s == null ? '' : s)
@@ -558,13 +612,13 @@ function _ticketCard(t) {
     return `
       <div class="bg-[#151515] border border-white/5 rounded-[5px] p-4 flex flex-col gap-2">
         <div class="flex items-center justify-between">
-          <p class="font-semibold">Задача №${t.id}</p>
+          <p class="font-semibold">Задача в„–${t.id}</p>
           <span class="text-xs text-[#FF9A3C]">${_esc(TICKET_STATUS_LABELS[t.status] || t.status)}</span>
         </div>
         <p class="text-sm text-[#B3B3B3]">${_esc(t.description)}</p>
         <div class="text-xs text-[#6B6B6B] flex flex-wrap gap-3">
           <span>Категория: ${_esc(t.category_name || '—')}</span>
-          <span>Исполнитель: ${_esc(t.assignee_name || 'не назначен')}</span>
+          <span>?сполнитель: ${_esc(t.assignee_name || 'не назначен')}</span>
           <span>Приоритет: ${t.priority}</span>
         </div>
       </div>`;
@@ -641,7 +695,7 @@ async function loadMgrActiveTasks() {
               <div class="task-card">
                 <div class="flex justify-between items-start gap-4">
                     <div>
-                        <h3 class="font-semibold text-base tracking-tight">Задача №${t.id}</h3>
+                        <h3 class="font-semibold text-base tracking-tight">Задача в„–${t.id}</h3>
                         <p class="text-xs text-[#6B6B6B] mt-0.5">${_esc(t.description || '').slice(0, 80)}</p>
                         <p class="text-xs text-[#B3B3B3] mt-1">Выполняет: ${_esc(t.assignee_name || '—')}</p>
                     </div>

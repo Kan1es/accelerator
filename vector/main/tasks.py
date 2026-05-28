@@ -13,6 +13,48 @@ from .utils import notification, send_websocket_notification
 
 GLOBAL_LIMIT = 3600
 
+
+def _next_priority(priority):
+    if priority < 5:
+        return 5
+    if priority < 7:
+        return 7
+    return 10
+
+
+def _ticket_department(ticket):
+    if ticket.category and ticket.category.department:
+        return ticket.category.department
+    if ticket.assignee and ticket.assignee.department:
+        return ticket.assignee.department
+    if ticket.creator and ticket.creator.department:
+        return ticket.creator.department
+    return None
+
+
+def _department_manager(department):
+    if not department:
+        return None
+    return Employee.objects.filter(
+        department=department,
+        is_active=True,
+        role__power__gte=5,
+    ).order_by('-role__power', 'id').first()
+
+
+def _notify_deadline_escalation(ticket):
+    recipients = []
+    for employee in (ticket.creator, ticket.assignee, _department_manager(_ticket_department(ticket))):
+        if employee and employee.id not in [r.id for r in recipients]:
+            recipients.append(employee)
+    for employee in recipients:
+        notification(
+            employee,
+            f'Дедлайн задачи #{ticket.id} просрочен',
+            f'Критичность повышена до {ticket.priority}. {ticket.description[:120]}',
+            '/manager_tasks.html' if employee.role and (employee.role.power or 0) >= 5 else '/employee_tasks.html',
+        )
+
 @shared_task
 def monitor_deadline(ticket_id):
     try:
@@ -23,9 +65,8 @@ def monitor_deadline(ticket_id):
     if ticket.deadline is None:
         return
 
-    if ticket.status == "in_progress" and ticket.deadline < timezone.now():
-        ticket.status = "expired"
-        ticket.save(update_fields=['status'])
+    if ticket.status in ("open", "assigned", "in_progress") and ticket.deadline < timezone.now():
+        check_timeouts.delay()
 
 
 
@@ -86,6 +127,24 @@ def check_timeouts():
                 )
         expired_tickets.update(status='expired')
     return f'Checked timeouts: {count} tickets marked as expired'
+
+
+@shared_task
+def check_timeouts():
+    now = timezone.now()
+    overdue_tickets = Ticket.objects.filter(
+        deadline__lt=now,
+        deadline_escalated_at__isnull=True,
+        status__in=['open', 'assigned', 'in_progress'],
+    ).select_related('creator', 'assignee', 'category__department')
+    count = overdue_tickets.count()
+    for ticket in overdue_tickets:
+        ticket.priority = _next_priority(ticket.priority)
+        ticket.deadline_escalated_at = now
+        ticket.save(update_fields=['priority', 'deadline_escalated_at'])
+        TaskQueue.objects.filter(ticket=ticket, is_activated=True).update(priority=ticket.priority)
+        _notify_deadline_escalation(ticket)
+    return f'Checked timeouts: {count} tickets escalated'
 
 @shared_task
 def cleanup_end_of_day():

@@ -16,7 +16,7 @@ from django.db.models import Count, Q
 
 from .services.ml_client import classify_text, fetch_ml_accuracy
 from .services.queue_service import push_to_queue
-from .utils import auto_assign_from_queue
+from .utils import auto_assign_from_queue, notification
 from django.db import transaction
 
 @swagger_auto_schema(
@@ -275,6 +275,35 @@ def category_counter_tickets(request):
 DEFAULT_PRIORITY = 5
 
 
+def _parse_priority(value):
+    try:
+        return max(1, min(10, int(value)))
+    except (TypeError, ValueError):
+        return DEFAULT_PRIORITY
+
+
+def _parse_deadline(value):
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+    except ValueError:
+        return None
+    if timezone.is_naive(parsed):
+        parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+    return parsed
+
+
+def _department_manager(department):
+    if not department:
+        return None
+    return Employee.objects.filter(
+        department=department,
+        is_active=True,
+        role__power__gte=5,
+    ).order_by('-role__power', 'id').first()
+
+
 @swagger_auto_schema(
     method='post',
     operation_description="Создание тикета через чат-агента: текст обращения "
@@ -317,13 +346,14 @@ def classificate_and_create_ticket(request):
     # по одному сообщению. Срок останется None («Без срока») — менеджер при
     # необходимости назначит вручную через модалку.
     now = timezone.now()
-    deadline = None
+    priority = _parse_priority(request.data.get('priority', DEFAULT_PRIORITY))
+    deadline = _parse_deadline(request.data.get('deadline'))
 
     with transaction.atomic():
         new_ticket = Ticket.objects.create(
             description=text,
             category=category,
-            priority=DEFAULT_PRIORITY,
+            priority=priority,
             status='open',
             created_at=now,
             creator=employee,
@@ -337,11 +367,25 @@ def classificate_and_create_ticket(request):
 
     # Перечитаем тикет, чтобы вернуть актуальные assignee/status.
     new_ticket.refresh_from_db()
+    if not new_ticket.assignee:
+        manager = _department_manager(category.department)
+        if manager:
+            notification(
+                manager,
+                f'Задача #{new_ticket.id} ожидает исполнителя',
+                f'Нет свободного сотрудника для категории "{category.name}".',
+                '/manager_tasks.html',
+            )
 
     result = {
         'category': category.name,
         'confidence': round(confidence, 4),
         'ticket_id': new_ticket.id,
+        'department_name': category.department.name if category.department else None,
+        'assignee_name': new_ticket.assignee.name if new_ticket.assignee else None,
+        'priority': new_ticket.priority,
+        'deadline': new_ticket.deadline.isoformat() if new_ticket.deadline else None,
+        'status': new_ticket.status,
     }
     serializer = ClassificatorSerializator(result)
     return Response(serializer.data, status=status.HTTP_201_CREATED)

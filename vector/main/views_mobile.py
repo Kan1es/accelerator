@@ -110,18 +110,18 @@ def mobile_tickets_list(request):
         return Response({'error': 'У сотрудника не указан отдел'},
                         status=status.HTTP_400_BAD_REQUEST)
 
-    active_statuses = ['open', 'assigned', 'in_progress', 'resolved']
+    active_statuses = ['open', 'assigned', 'in_progress', 'resolved', 'declined']
 
     # Суперадмин без отдела видит тикеты всех отделов
     if not department:
         tickets = list(Ticket.objects.filter(
             status__in=active_statuses
-        ).select_related('assignee', 'category', 'creator').order_by('-priority', '-created_at'))
+        ).select_related('assignee', 'category', 'category__department', 'creator', 'declined_by').order_by('-priority', '-created_at'))
     else:
         tickets = list(Ticket.objects.filter(
             category__department=department,
             status__in=active_statuses
-        ).select_related('assignee', 'category', 'creator').order_by('-priority', '-created_at'))
+        ).select_related('assignee', 'category', 'category__department', 'creator', 'declined_by').order_by('-priority', '-created_at'))
 
     assigner_map = _latest_assigner_map([t.id for t in tickets])
 
@@ -137,8 +137,14 @@ def mobile_tickets_list(request):
             'assigner_name': assigner_map.get(ticket.id),  # None => назначил ИИ
             'priority': ticket.priority,
             'category_name': ticket.category.name if ticket.category else None,
+            'department_name': ticket.category.department.name if ticket.category and ticket.category.department else None,
             'created_at': ticket.created_at.isoformat() if ticket.created_at else None,
             'deadline': ticket.deadline.isoformat() if ticket.deadline else None,
+            'deadline_escalated_at': ticket.deadline_escalated_at.isoformat() if ticket.deadline_escalated_at else None,
+            'decline_reason': ticket.decline_reason,
+            'decline_not_mine': ticket.decline_not_mine,
+            'declined_by_name': ticket.declined_by.name if ticket.declined_by else None,
+            'declined_at': ticket.declined_at.isoformat() if ticket.declined_at else None,
         })
 
     serializer = MobileTicketSerializer(result, many=True)
